@@ -1,12 +1,13 @@
 import { connection } from "next/server";
 
-import { importJobicyJobsAction } from "@/app/actions/import-jobicy";
+import {
+  importJobicyJobsAction,
+  reprocessStoredJobicyJobsAction,
+} from "@/app/actions/import-jobicy";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatDate(value: string | null) {
-  if (!value) {
-    return "—";
-  }
+  if (!value) return "—";
 
   return new Intl.DateTimeFormat("es-UY", {
     year: "numeric",
@@ -37,13 +38,8 @@ export default async function Home() {
 
   const connected = !countError && !jobsError;
 
-  if (countError) {
-    console.error("Supabase count check failed:", countError.message);
-  }
-
-  if (jobsError) {
-    console.error("Supabase QA jobs query failed:", jobsError.message);
-  }
+  if (countError) console.error("Supabase count check failed:", countError.message);
+  if (jobsError) console.error("Supabase QA jobs query failed:", jobsError.message);
 
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-100 sm:px-6 sm:py-16">
@@ -83,22 +79,31 @@ export default async function Home() {
           <h2 className="mt-1 text-xl font-medium">Jobicy</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
             Importa ofertas remotas orientadas a desarrollo, soporte,
-            integraciones, implementación y análisis técnico. Las ofertas se
-            normalizan y se deduplican antes de guardarse.
+            integraciones, implementación y análisis técnico.
           </p>
 
-          <form action={importJobicyJobsAction} className="mt-5">
-            <button
-              type="submit"
-              className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-white"
-            >
-              Importar ofertas de Jobicy
-            </button>
-          </form>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <form action={importJobicyJobsAction}>
+              <button
+                type="submit"
+                className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-white"
+              >
+                Importar ofertas de Jobicy
+              </button>
+            </form>
+
+            <form action={reprocessStoredJobicyJobsAction}>
+              <button
+                type="submit"
+                className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white"
+              >
+                Reprocesar ofertas guardadas
+              </button>
+            </form>
+          </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            Para respetar la fuente, una importación exitosa bloquea nuevas
-            consultas durante aproximadamente una hora.
+            Reprocesar usa sólo datos ya guardados; no vuelve a consultar Jobicy.
           </p>
         </section>
 
@@ -109,8 +114,8 @@ export default async function Home() {
               20 ofertas más recientes
             </h2>
             <p className="mt-2 text-sm text-zinc-400">
-              Esta tabla es temporal: sirve para validar que los datos de
-              Jobicy estén cayendo correctamente antes de implementar scoring.
+              Esta tabla es temporal: sirve para validar relevancia y campos
+              normalizados antes de implementar scoring.
             </p>
           </div>
 
@@ -121,6 +126,7 @@ export default async function Home() {
                   <th className="px-4 py-3 font-medium">Puesto</th>
                   <th className="px-4 py-3 font-medium">Empresa</th>
                   <th className="px-4 py-3 font-medium">Ubicación</th>
+                  <th className="px-4 py-3 font-medium">Alcance</th>
                   <th className="px-4 py-3 font-medium">Seniority</th>
                   <th className="px-4 py-3 font-medium">Tipo</th>
                   <th className="px-4 py-3 font-medium">Fecha</th>
@@ -137,12 +143,15 @@ export default async function Home() {
                       {job.company_name}
                     </td>
                     <td className="min-w-52 px-4 py-4 text-zinc-400">
-                      {job.location_text ?? job.remote_scope ?? "—"}
+                      {job.location_text ?? "—"}
                     </td>
-                    <td className="min-w-36 px-4 py-4 text-zinc-400">
+                    <td className="min-w-32 px-4 py-4 text-zinc-400">
+                      {job.remote_scope ?? "—"}
+                    </td>
+                    <td className="min-w-32 px-4 py-4 text-zinc-400">
                       {job.seniority ?? "—"}
                     </td>
-                    <td className="min-w-40 px-4 py-4 text-zinc-400">
+                    <td className="min-w-32 px-4 py-4 text-zinc-400">
                       {job.employment_type ?? job.workplace_type ?? "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-zinc-400">
@@ -163,10 +172,7 @@ export default async function Home() {
 
                 {(recentJobs ?? []).length === 0 && (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-8 text-center text-zinc-500"
-                    >
+                    <td colSpan={8} className="px-4 py-8 text-center text-zinc-500">
                       No hay ofertas para revisar.
                     </td>
                   </tr>
