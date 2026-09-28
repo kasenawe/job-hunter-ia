@@ -22,10 +22,20 @@ export default async function Home() {
   const supabase = createSupabaseServerClient();
 
   const [
-    { count, error: countError },
+    { count: totalCount, error: totalError },
+    { count: activeCount, error: activeError },
+    { count: inactiveCount, error: inactiveError },
     { data: recentJobs, error: jobsError },
   ] = await Promise.all([
     supabase.from("jobs").select("id", { count: "exact", head: true }),
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true),
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", false),
     supabase
       .from("jobs")
       .select(
@@ -36,9 +46,11 @@ export default async function Home() {
       .limit(20),
   ]);
 
-  const connected = !countError && !jobsError;
+  const connected = !totalError && !activeError && !inactiveError && !jobsError;
 
-  if (countError) console.error("Supabase count check failed:", countError.message);
+  if (totalError) console.error("Supabase total count failed:", totalError.message);
+  if (activeError) console.error("Supabase active count failed:", activeError.message);
+  if (inactiveError) console.error("Supabase inactive count failed:", inactiveError.message);
   if (jobsError) console.error("Supabase QA jobs query failed:", jobsError.message);
 
   return (
@@ -57,7 +69,7 @@ export default async function Home() {
         </div>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <div className="flex items-center justify-between gap-6">
+          <div className="grid gap-6 sm:grid-cols-4">
             <div>
               <p className="text-sm text-zinc-400">Supabase</p>
               <p className="mt-1 text-lg font-medium">
@@ -65,10 +77,24 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="text-right">
-              <p className="text-sm text-zinc-400">Ofertas almacenadas</p>
+            <div>
+              <p className="text-sm text-zinc-400">Total</p>
               <p className="mt-1 text-3xl font-semibold">
-                {connected ? (count ?? 0) : "—"}
+                {connected ? (totalCount ?? 0) : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-zinc-400">Activas</p>
+              <p className="mt-1 text-3xl font-semibold">
+                {connected ? (activeCount ?? 0) : "—"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-zinc-400">Inactivas</p>
+              <p className="mt-1 text-3xl font-semibold">
+                {connected ? (inactiveCount ?? 0) : "—"}
               </p>
             </div>
           </div>
@@ -111,7 +137,7 @@ export default async function Home() {
           <div className="border-b border-zinc-800 p-6">
             <p className="text-sm text-zinc-400">QA de normalización</p>
             <h2 className="mt-1 text-xl font-medium">
-              20 ofertas más recientes
+              20 ofertas activas más recientes
             </h2>
             <p className="mt-2 text-sm text-zinc-400">
               Esta tabla es temporal: sirve para validar relevancia y campos
@@ -173,7 +199,7 @@ export default async function Home() {
                 {(recentJobs ?? []).length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-zinc-500">
-                      No hay ofertas para revisar.
+                      No hay ofertas activas para revisar.
                     </td>
                   </tr>
                 )}
