@@ -4,6 +4,7 @@ import {
   importJobicyJobsAction,
   reprocessStoredJobicyJobsAction,
 } from "@/app/actions/import-jobicy";
+import { SubmitButton } from "@/components/submit-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function formatDate(value: string | null) {
@@ -110,21 +111,15 @@ export default async function Home() {
 
           <div className="mt-5 flex flex-wrap gap-3">
             <form action={importJobicyJobsAction}>
-              <button
-                type="submit"
-                className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-950 transition hover:bg-white"
-              >
+              <SubmitButton pendingLabel="Importando...">
                 Importar ofertas de Jobicy
-              </button>
+              </SubmitButton>
             </form>
 
             <form action={reprocessStoredJobicyJobsAction}>
-              <button
-                type="submit"
-                className="rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white"
-              >
+              <SubmitButton pendingLabel="Procesando..." variant="secondary">
                 Reprocesar ofertas guardadas
-              </button>
+              </SubmitButton>
             </form>
           </div>
 
