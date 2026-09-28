@@ -18,7 +18,9 @@ The MVP currently supports:
 - opening the original job offer.
 
 Scoring v1.1 is currently in QA and calibration. Confirmed location exclusions
-remain visible for audit but are capped below the application-priority threshold.
+remain visible in a separate audit list and are capped below the
+application-priority threshold. The priority list does not fill empty slots
+with geographically incompatible jobs.
 
 Planned MVP work includes:
 

@@ -78,7 +78,7 @@ function scoreLanguage(text: string, language: string | null) {
   if (explicit.includes("spanish")) return 100;
 
   if (
-    /native english|english native|c2 english|c1 english|native-level english/.test(
+    /native english|english native|c2 english|c1 english|native-level english|exceptional (?:written and spoken )?english/.test(
       text,
     )
   ) {

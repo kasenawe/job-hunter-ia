@@ -426,7 +426,8 @@ It currently exposes development/MVP controls and QA information:
 - Jobicy import action;
 - safe reprocessing action;
 - scoring v1 action;
-- ranking table;
+- a Top 10 priority table for eligible or geographically uncertain matches;
+- an expandable audit list for location-incompatible matches;
 - normalization QA table.
 
 This is not the final product UI.

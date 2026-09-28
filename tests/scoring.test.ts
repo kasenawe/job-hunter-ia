@@ -79,3 +79,16 @@ test("explicit bonus skills are recorded as desirable, not an unmet central requ
 test("marketing automation alone does not pass the technical prefilter", () => {
   assert.equal(isRelevantJobicyJob({ jobTitle: "Lifecycle Marketing Automation Specialist" }), false);
 });
+
+test("exceptional written and spoken English is a visible gap for conversational English", () => {
+  const match = scoreJob(job({
+    title: "Cloud Support Engineer",
+    location_text: "Anywhere",
+    remote_scope: "worldwide",
+    description_text: "Hands-on Linux support, networking, cloud troubleshooting, and exceptional written and spoken English.",
+  }));
+
+  assert.equal(match.score_breakdown.raw.language, 55);
+  assert.ok(match.gaps.some((gap) => gap.includes("inglés más alto")));
+  assert.equal(match.score_breakdown.eligibility_adjustment.status, "eligible");
+});
