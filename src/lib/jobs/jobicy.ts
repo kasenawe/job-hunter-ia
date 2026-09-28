@@ -1,119 +1,17 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  isRelevantJobicyJob,
+  normalizeJobicyJob,
+  type JobicyJob,
+} from "@/lib/jobs/normalize-jobicy";
 
 const JOBICY_ENDPOINT = "https://jobicy.com/api/v2/remote-jobs";
 const MIN_IMPORT_INTERVAL_MS = 60 * 60 * 1000;
 const JOBICY_COUNT = 200;
 
-const RELEVANCE_TERMS = [
-  "software",
-  "developer",
-  "engineer",
-  "backend",
-  "frontend",
-  "full stack",
-  "full-stack",
-  "javascript",
-  "typescript",
-  "react",
-  "node",
-  "php",
-  "integration",
-  "implementation",
-  "systems analyst",
-  "system analyst",
-  "business analyst",
-  "technical support",
-  "application support",
-  "support engineer",
-  "infrastructure",
-  "system administrator",
-  "systems administrator",
-  "sysadmin",
-  "technical operations",
-  "automation",
-  "api",
-] as const;
-
-type JobicyJob = {
-  id?: number | string;
-  url?: string;
-  jobTitle?: string;
-  companyName?: string;
-  companyLogo?: string;
-  jobIndustry?: string[];
-  jobType?: string[];
-  jobGeo?: string;
-  jobLevel?: string;
-  jobExcerpt?: string;
-  jobDescription?: string;
-  pubDate?: string;
-  salaryMin?: number | string | null;
-  salaryMax?: number | string | null;
-  salaryCurrency?: string | null;
-  salaryPeriod?: string | null;
-  [key: string]: unknown;
-};
-
-type JobicyResponse = {
-  jobs?: JobicyJob[];
-};
-
-function cleanText(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const cleaned = value.trim();
-  return cleaned.length > 0 ? cleaned : null;
-}
-
-function stripHtml(value: string | undefined): string {
-  return (value ?? "")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function safeNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : null;
-}
-
-function safeIsoDate(value: unknown): string | null {
-  if (typeof value !== "string" || value.trim() === "") {
-    return null;
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function isRelevantJob(job: JobicyJob): boolean {
-  const haystack = [
-    job.jobTitle,
-    job.jobExcerpt,
-    ...(Array.isArray(job.jobIndustry) ? job.jobIndustry : []),
-  ]
-    .filter((value): value is string => typeof value === "string")
-    .join(" ")
-    .toLowerCase();
-
-  return RELEVANCE_TERMS.some((term) => haystack.includes(term));
-}
+type JobicyResponse = { jobs?: JobicyJob[] };
 
 async function fetchJobicyJobs(): Promise<JobicyJob[]> {
   const url = new URL(JOBICY_ENDPOINT);
@@ -121,9 +19,7 @@ async function fetchJobicyJobs(): Promise<JobicyJob[]> {
 
   const response = await fetch(url, {
     cache: "no-store",
-    headers: {
-      Accept: "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
 
   if (!response.ok) {
@@ -146,7 +42,9 @@ export async function importJobicyJobs() {
     .maybeSingle();
 
   if (latestJobError) {
-    throw new Error(`Could not check Jobicy import interval: ${latestJobError.message}`);
+    throw new Error(
+      `Could not check Jobicy import interval: ${latestJobError.message}`,
+    );
   }
 
   if (latestJob?.last_seen_at) {
@@ -156,102 +54,24 @@ export async function importJobicyJobs() {
       Number.isFinite(lastImportTime) &&
       Date.now() - lastImportTime < MIN_IMPORT_INTERVAL_MS
     ) {
-      return {
-        imported: 0,
-        skipped: true,
-      };
+      return { imported: 0, skipped: true };
     }
   }
 
-  const jobs = await fetchJobicyJobs();
   const uniqueJobs = new Map<string, JobicyJob>();
 
-  for (const job of jobs) {
-    if (
-      job.id !== undefined &&
-      job.id !== null &&
-      isRelevantJob(job)
-    ) {
+  for (const job of await fetchJobicyJobs()) {
+    if (job.id != null && isRelevantJobicyJob(job)) {
       uniqueJobs.set(String(job.id), job);
     }
   }
 
-  const rows = Array.from(uniqueJobs.values()).flatMap((job) => {
-    const sourceJobId =
-      job.id === undefined || job.id === null ? null : String(job.id);
-    const sourceUrl = cleanText(job.url);
-    const title = cleanText(job.jobTitle);
-    const companyName = cleanText(job.companyName);
-
-    const descriptionText =
-      stripHtml(job.jobDescription) ||
-      stripHtml(job.jobExcerpt) ||
-      "Description unavailable";
-
-    if (!sourceJobId || !sourceUrl || !title || !companyName) {
-      return [];
-    }
-
-    const jobTypes = Array.isArray(job.jobType)
-      ? job.jobType.map(cleanText).filter((value): value is string => Boolean(value))
-      : [];
-
-    const industries = Array.isArray(job.jobIndustry)
-      ? job.jobIndustry
-          .map(cleanText)
-          .filter((value): value is string => Boolean(value))
-      : [];
-
-    let salaryMin = safeNumber(job.salaryMin);
-    let salaryMax = safeNumber(job.salaryMax);
-
-    if (
-      salaryMin !== null &&
-      salaryMax !== null &&
-      salaryMax < salaryMin
-    ) {
-      [salaryMin, salaryMax] = [salaryMax, salaryMin];
-    }
-
-    return [
-      {
-        source: "jobicy",
-        source_job_id: sourceJobId,
-        source_url: sourceUrl,
-        apply_url: null,
-        title,
-        company_name: companyName,
-        location_text: cleanText(job.jobGeo),
-        remote_scope: cleanText(job.jobGeo),
-        workplace_type: "remote",
-        employment_type: jobTypes.length > 0 ? jobTypes.join(", ") : null,
-        seniority: cleanText(job.jobLevel),
-        language: null,
-        description_text: descriptionText,
-        posted_at: safeIsoDate(job.pubDate),
-        expires_at: null,
-        salary_min: salaryMin,
-        salary_max: salaryMax,
-        salary_currency: cleanText(job.salaryCurrency),
-        salary_interval: cleanText(job.salaryPeriod),
-        raw_payload: job,
-        normalized_payload: {
-          industries,
-          job_types: jobTypes,
-          company_logo: cleanText(job.companyLogo),
-          excerpt: cleanText(job.jobExcerpt),
-          source_geo: cleanText(job.jobGeo),
-        },
-        is_active: true,
-      },
-    ];
-  });
+  const rows = Array.from(uniqueJobs.values())
+    .map(normalizeJobicyJob)
+    .filter((row): row is NonNullable<typeof row> => row !== null);
 
   if (rows.length === 0) {
-    return {
-      imported: 0,
-      skipped: false,
-    };
+    return { imported: 0, skipped: false };
   }
 
   const { error: upsertError } = await supabase.from("jobs").upsert(rows, {
@@ -262,14 +82,14 @@ export async function importJobicyJobs() {
     throw new Error(`Could not store Jobicy jobs: ${upsertError.message}`);
   }
 
-  const now = new Date().toISOString();
-  const sourceJobIds = rows.map((row) => row.source_job_id);
-
   const { error: lastSeenError } = await supabase
     .from("jobs")
-    .update({ last_seen_at: now })
+    .update({ last_seen_at: new Date().toISOString() })
     .eq("source", "jobicy")
-    .in("source_job_id", sourceJobIds);
+    .in(
+      "source_job_id",
+      rows.map((row) => row.source_job_id),
+    );
 
   if (lastSeenError) {
     throw new Error(
@@ -277,8 +97,59 @@ export async function importJobicyJobs() {
     );
   }
 
+  return { imported: rows.length, skipped: false };
+}
+
+export async function reprocessStoredJobicyJobs() {
+  const supabase = createSupabaseServerClient();
+
+  const { data: storedJobs, error: readError } = await supabase
+    .from("jobs")
+    .select("id,raw_payload")
+    .eq("source", "jobicy");
+
+  if (readError) {
+    throw new Error(`Could not read stored Jobicy jobs: ${readError.message}`);
+  }
+
+  const keptRows: NonNullable<ReturnType<typeof normalizeJobicyJob>>[] = [];
+  const removedIds: string[] = [];
+
+  for (const storedJob of storedJobs ?? []) {
+    const raw = storedJob.raw_payload as JobicyJob;
+
+    if (!isRelevantJobicyJob(raw)) {
+      removedIds.push(storedJob.id);
+      continue;
+    }
+
+    const normalized = normalizeJobicyJob(raw);
+
+    if (normalized) keptRows.push(normalized);
+    else removedIds.push(storedJob.id);
+  }
+
+  if (keptRows.length > 0) {
+    const { error } = await supabase.from("jobs").upsert(keptRows, {
+      onConflict: "source,source_job_id",
+    });
+
+    if (error) {
+      throw new Error(`Could not reprocess stored Jobicy jobs: ${error.message}`);
+    }
+  }
+
+  if (removedIds.length > 0) {
+    const { error } = await supabase.from("jobs").delete().in("id", removedIds);
+
+    if (error) {
+      throw new Error(`Could not remove irrelevant Jobicy jobs: ${error.message}`);
+    }
+  }
+
   return {
-    imported: rows.length,
-    skipped: false,
+    reviewed: storedJobs?.length ?? 0,
+    kept: keptRows.length,
+    removed: removedIds.length,
   };
 }
