@@ -32,7 +32,7 @@ test("a strong technical match cannot outrank confirmed US-only eligibility", ()
   assert.ok(match.total_score < 55);
   assert.equal(match.score_breakdown.eligibility_adjustment.status, "incompatible");
   assert.equal(match.score_breakdown.eligibility_adjustment.cap, 54);
-  assert.equal(match.score_breakdown.base_score - match.total_score, match.score_breakdown.eligibility_adjustment.points_removed);
+  assert.equal(match.score_breakdown.base_score - match.total_score, match.score_breakdown.eligibility_adjustment.points_removed + match.score_breakdown.requirements_adjustment.points_removed);
   assert.ok(match.requirement_analysis.some((item) => item.area === "location" && item.criticality === "central" && item.status === "unmet"));
   assert.ok(match.gaps.some((gap) => gap.includes("5 años")));
   assert.match(match.summary, /Ubicación incompatible/);
@@ -91,4 +91,32 @@ test("exceptional written and spoken English is a visible gap for conversational
   assert.equal(match.score_breakdown.raw.language, 55);
   assert.ok(match.gaps.some((gap) => gap.includes("inglés más alto")));
   assert.equal(match.score_breakdown.eligibility_adjustment.status, "eligible");
+});
+
+test("five years of PHP software engineering cannot be a very strong match with two years of development", () => {
+  const match = scoreJob(job({
+    title: "Senior Software Engineer",
+    description_text: "Build PHP, React and SQL web applications. 5+ years of PHP web application software engineering experience required.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 69);
+  assert.ok(match.total_score <= 69);
+  assert.ok(match.gaps.some((gap) => gap.includes("5 años de desarrollo")));
+});
+
+test("explicit multi-year Go requirement is recorded as central and limits a broad keyword match", () => {
+  const match = scoreJob(job({
+    title: "Software Engineer - Auth",
+    description_text: "About the company: Postgres, Supabase, TypeScript, React, Node.js, APIs. (Required) Have 4+ years of professional experience writing and shipping Go in production. Implement authentication features in Go and TypeScript.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_requirement" && item.criticality === "central" && item.skill === "Go"));
+  assert.ok(match.gaps.some((gap) => gap.includes("4 años profesionales en Go")));
+});
+
+test("multi-domain support tenure is not misread as years of software development", () => {
+  const match = scoreJob(job({
+    title: "Database Support Engineer",
+    description_text: "You have 7+ years in technical support, databases, backend engineering, SRE, or a similar field. Troubleshoot Postgres queries and customer issues.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, null);
 });

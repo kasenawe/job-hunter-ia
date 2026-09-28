@@ -148,11 +148,32 @@ function scoreOther(job: JobForScoring) {
   return clamp(score);
 }
 
-function requiredDevelopmentYears(description: string) {
-  const match = description.match(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?(?:professional\s+)?(?:experience\s+(?:in|with)\s+)?(?:web development|software development|software engineering|engineering|backend|frontend|full[- ]stack)/i);
-  if (!match) return null;
+function requiredDevelopmentYears(description: string, title: string) {
+  const requirements = description.matchAll(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?([^.!?\n]{0,120})/gi);
   const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
-  return { years: words[match[1].toLowerCase()] ?? Number(match[1]), evidence: match[0].trim() };
+  for (const match of requirements) {
+    const context = match[2].toLowerCase();
+    if (/^(?:experience\s+)?in\s+(?:technical support|databases|database support|sre)\b/.test(context)) continue;
+    const development = /software (?:development|engineering)|web (?:development|application)|backend|frontend|full[- ]stack/.test(context);
+    const genericDevelopment = /^(?:professional )?experience\b/.test(context) &&
+      !/^experience\s+(?:in|with)\s+(?:technical support|databases|sre)\b/.test(context) &&
+      /developer|software engineer|full[- ]stack/i.test(title);
+    if (development || genericDevelopment) {
+      return { years: words[match[1].toLowerCase()] ?? Number(match[1]), evidence: match[0].trim() };
+    }
+  }
+  return null;
+}
+
+function requiredUnverifiedSpecialistSkill(description: string) {
+  const requirement = /\(required\)[^.]{0,130}?\b(\d{1,2})\+?\s+years?\b[^.]{0,140}?\b(Go|Golang|Kotlin|Android|Python|Java|C#|Ruby)\b/gi;
+  for (const match of description.matchAll(requirement)) {
+    const skill = match[2].toLowerCase();
+    if (![...CANDIDATE_PROFILE.strongSkills, ...CANDIDATE_PROFILE.transferableSkills].some((known) => known.toLowerCase() === skill)) {
+      return { years: Number(match[1]), skill: match[2], evidence: match[0].trim() };
+    }
+  }
+  return null;
 }
 
 function category(score: number) {
@@ -166,7 +187,8 @@ export function scoreJob(job: JobForScoring) {
   const title = job.title.toLowerCase();
   const text = `${job.title} ${job.description_text}`.toLowerCase();
   const effectiveSeniority = seniorityFromTitle(job.title) ?? job.seniority;
-  const developmentYears = requiredDevelopmentYears(job.description_text);
+  const developmentYears = requiredDevelopmentYears(job.description_text, job.title);
+  const specialistRequirement = requiredUnverifiedSpecialistSkill(job.description_text);
   const desirableStart = /\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\))/i.exec(job.description_text)?.index;
   const desirableMatches = desirableStart === undefined
     ? []
@@ -248,10 +270,14 @@ export function scoreJob(job: JobForScoring) {
   const baseScore = clamp(
     Object.values(weighted).reduce((sum, value) => sum + value, 0),
   );
-  // Keep the six weighted components, but prevent a confirmed exclusion from
-  // appearing as an actionable match. The cap is recorded in the breakdown.
+  // Central requirements limit the recommendation category without altering
+  // the six weighted components; each adjustment remains auditable.
+  const requirementsCap = specialistRequirement && specialistRequirement.years >= 3
+    ? 64
+    : developmentYears && developmentYears.years >= 5 ? 69 : null;
+  const scoreAfterRequirements = requirementsCap === null ? baseScore : Math.min(baseScore, requirementsCap);
   const eligibilityCap = location.eligibility === "incompatible" ? 54 : null;
-  const totalScore = eligibilityCap === null ? baseScore : Math.min(baseScore, eligibilityCap);
+  const totalScore = eligibilityCap === null ? scoreAfterRequirements : Math.min(scoreAfterRequirements, eligibilityCap);
 
   const strengths: string[] = [];
   const gaps: string[] = [];
@@ -283,6 +309,10 @@ export function scoreJob(job: JobForScoring) {
 
   if (developmentYears && developmentYears.years >= 5) {
     gaps.push(`Se solicitan ${developmentYears.years} años de desarrollo profesional; el perfil acredita aproximadamente 2.`);
+  }
+
+  if (specialistRequirement && specialistRequirement.years >= 3) {
+    gaps.push(`No hay evidencia de ${specialistRequirement.years} años profesionales en ${specialistRequirement.skill}, un requisito explícito.`);
   }
 
   if (languageRaw <= 65) {
@@ -333,6 +363,14 @@ export function scoreJob(job: JobForScoring) {
       value: effectiveSeniority,
       development_years: developmentYears,
     },
+    ...(specialistRequirement && specialistRequirement.years >= 3 ? [{
+      area: "specialist_requirement",
+      criticality: "central",
+      status: "unverified",
+      evidence: specialistRequirement.evidence,
+      skill: specialistRequirement.skill,
+      years: specialistRequirement.years,
+    }] : []),
     {
       area: "language",
       criticality: "important",
@@ -371,10 +409,17 @@ export function scoreJob(job: JobForScoring) {
     score_breakdown: {
       weighted,
       base_score: baseScore,
+      requirements_adjustment: {
+        cap: requirementsCap,
+        points_removed: baseScore - scoreAfterRequirements,
+        evidence: specialistRequirement && specialistRequirement.years >= 3
+          ? specialistRequirement.evidence
+          : developmentYears && developmentYears.years >= 5 ? developmentYears.evidence : null,
+      },
       eligibility_adjustment: {
         status: location.eligibility,
         cap: eligibilityCap,
-        points_removed: baseScore - totalScore,
+        points_removed: scoreAfterRequirements - totalScore,
         evidence: location.evidence,
       },
       raw: {
@@ -392,7 +437,7 @@ export function scoreJob(job: JobForScoring) {
     risks,
     requirement_analysis: requirementAnalysis,
     recommended_cv: recommendedCv,
-    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}`,
+    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}`,
     scoring_version: SCORING_VERSION,
     matched_at: new Date().toISOString(),
   };
