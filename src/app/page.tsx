@@ -49,7 +49,7 @@ export default async function Home() {
       .select(
         "job_id,total_score,recommended_cv,summary,matched_at,job:jobs!inner(id,title,company_name,location_text,seniority,source_url,is_active)",
       )
-      .eq("jobs.is_active", true)
+      .eq("job.is_active", true)
       .order("total_score", { ascending: false })
       .limit(20),
     supabase
@@ -188,14 +188,14 @@ export default async function Home() {
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {(rankedMatches ?? []).map((match) => {
-                  const job = match.job as {
-                    id: string;
-                    title: string;
-                    company_name: string;
-                    location_text: string | null;
-                    seniority: string | null;
-                    source_url: string;
-                  };
+                  const jobRelation = match.job;
+                  const job = Array.isArray(jobRelation)
+                    ? jobRelation[0]
+                    : jobRelation;
+
+                  if (!job) {
+                    return null;
+                  }
 
                   return (
                     <tr key={match.job_id} className="align-top">
