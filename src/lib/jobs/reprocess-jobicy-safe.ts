@@ -19,47 +19,50 @@ export async function reprocessStoredJobicyJobsSafely() {
     throw new Error(readError.message);
   }
 
-  let kept = 0;
-  let deactivated = 0;
+  const keptRows: NonNullable<ReturnType<typeof normalizeJobicyJob>>[] = [];
+  const inactiveIds: string[] = [];
 
   for (const storedJob of storedJobs ?? []) {
     const raw = storedJob.raw_payload as JobicyJob;
 
     if (!isRelevantJobicyJob(raw)) {
-      const { error } = await supabase
-        .from("jobs")
-        .update({ is_active: false })
-        .eq("id", storedJob.id);
-
-      if (error) throw new Error(error.message);
-      deactivated += 1;
+      inactiveIds.push(storedJob.id);
       continue;
     }
 
     const normalized = normalizeJobicyJob(raw);
 
-    if (!normalized) {
-      continue;
+    if (normalized) {
+      keptRows.push(normalized);
+    } else {
+      inactiveIds.push(storedJob.id);
     }
+  }
 
+  if (keptRows.length > 0) {
+    const { error } = await supabase.from("jobs").upsert(keptRows, {
+      onConflict: "source,source_job_id",
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  if (inactiveIds.length > 0) {
     const { error } = await supabase
       .from("jobs")
-      .update({
-        remote_scope: normalized.remote_scope,
-        employment_type: normalized.employment_type,
-        seniority: normalized.seniority,
-        normalized_payload: normalized.normalized_payload,
-        is_active: true,
-      })
-      .eq("id", storedJob.id);
+      .update({ is_active: false })
+      .in("id", inactiveIds);
 
-    if (error) throw new Error(error.message);
-    kept += 1;
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
   return {
     reviewed: storedJobs?.length ?? 0,
-    kept,
-    deactivated,
+    kept: keptRows.length,
+    deactivated: inactiveIds.length,
   };
 }
