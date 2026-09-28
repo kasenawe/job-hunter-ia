@@ -187,6 +187,49 @@ function requiredAdvancedPostgres(description: string, title: string) {
   return internals.length >= 2 ? { evidence: requirement[0].trim(), internals } : null;
 }
 
+function requiredProductSecurity(description: string, title: string) {
+  if (!/\bsecurity (?:software )?engineer\b|\bproduct security\b/i.test(title)) return null;
+  if (!CANDIDATE_PROFILE.confirmedNoExperience.includes("product security")) return null;
+  const focus = /primary focus[^.!?\n]{0,220}/i.exec(description)
+    ?? /security-focused software engineers[^.!?\n]{0,220}/i.exec(description);
+  if (!focus || !/security|threat modeling/i.test(focus[0])) return null;
+  const activities = ["threat modeling", "fuzzing", "vulnerability response", "static analysis"]
+    .filter((term) => includesTerm(description, term));
+  return activities.length >= 2 ? { evidence: focus[0].trim(), activities } : null;
+}
+
+function requiredConfirmedAbsentTools(description: string, title: string) {
+  const mustHave = /\bMust Have:\s*([^\n]{0,1800})/i.exec(description)?.[1]
+    ?.split(/\b(?:Nice to Have|Preferred Qualifications)\b/i)[0];
+  if (mustHave && /hands-on experience with AWS\b/i.test(mustHave) &&
+      CANDIDATE_PROFILE.confirmedNoExperience.includes("AWS")) {
+    return { skills: ["AWS"], evidence: /hands-on experience with AWS[^.!?\n]{0,60}/i.exec(mustHave)?.[0] ?? "Must Have: AWS" };
+  }
+
+  if (/\b(?:IaC|Terraform provider)\b/i.test(title) &&
+      /\bown the Terraform provider\b/i.test(description) &&
+      CANDIDATE_PROFILE.confirmedNoExperience.includes("Terraform")) {
+    return { skills: ["Terraform"], evidence: "Own the Terraform provider as a core part of the platform" };
+  }
+
+  if (!/\b(?:infrastructure|devops|platform) engineer\b/i.test(title)) return null;
+  const qualifications = /\bQualifications\b([^\n]{0,2500})/i.exec(description)?.[1]
+    ?.split(/\b(?:Nice to Have|Preferred Qualifications)\b/i)[0];
+  if (!qualifications) return null;
+  const requirements = [
+    { skill: "AWS", pattern: /(?:strong proficiency with|hands-on experience with) AWS\b/i },
+    { skill: "Terraform", pattern: /hands-on experience (?:utilizing|with) Terraform\b/i },
+    { skill: "Kubernetes", pattern: /(?:solid understanding of|hands-on experience with) Kubernetes\b/i },
+  ];
+  const missing = requirements.filter(({ skill, pattern }) =>
+    CANDIDATE_PROFILE.confirmedNoExperience.some((known) => known === skill) && pattern.test(qualifications));
+  if (missing.length < 2) return null;
+  return {
+    skills: missing.map(({ skill }) => skill),
+    evidence: missing.map(({ pattern }) => pattern.exec(qualifications)?.[0]).join("; "),
+  };
+}
+
 function requiredUnverifiedSpecialistSkill(description: string) {
   const requirement = /\(required\)[^.]{0,130}?\b(\d{1,2})\+?\s+years?\b[^.]{0,140}?\b(Go|Golang|Kotlin|Android|Python|Java|C#|Ruby)\b/gi;
   for (const match of description.matchAll(requirement)) {
@@ -208,10 +251,13 @@ function category(score: number) {
 export function scoreJob(job: JobForScoring) {
   const title = job.title.toLowerCase();
   const text = `${job.title} ${job.description_text}`.toLowerCase();
-  const effectiveSeniority = seniorityFromTitle(job.title) ?? job.seniority;
+  const describedStaffRole = /\b(?:Responsibilities|Role):?\s+Staff (?:Backend|Software|Frontend|Full[- ]stack) Engineer\b/i.test(job.description_text);
+  const effectiveSeniority = describedStaffRole ? "staff" : seniorityFromTitle(job.title) ?? job.seniority;
   const developmentYears = requiredDevelopmentYears(job.description_text, job.title);
   const supportYears = requiredSupportYears(job.description_text, job.title);
   const advancedPostgres = requiredAdvancedPostgres(job.description_text, job.title);
+  const productSecurity = requiredProductSecurity(job.description_text, job.title);
+  const absentTools = requiredConfirmedAbsentTools(job.description_text, job.title);
   const specialistRequirement = requiredUnverifiedSpecialistSkill(job.description_text);
   const desirableStart = /\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\))/i.exec(job.description_text)?.index;
   const desirableMatches = desirableStart === undefined
@@ -296,7 +342,7 @@ export function scoreJob(job: JobForScoring) {
   );
   // Central requirements limit the recommendation category without altering
   // the six weighted components; each adjustment remains auditable.
-  const requirementsCap = (specialistRequirement && specialistRequirement.years >= 3) || advancedPostgres
+  const requirementsCap = (specialistRequirement && specialistRequirement.years >= 3) || advancedPostgres || productSecurity || absentTools
     ? 64
     : (developmentYears && developmentYears.years >= 5) || supportYears ? 69 : null;
   const scoreAfterRequirements = requirementsCap === null ? baseScore : Math.min(baseScore, requirementsCap);
@@ -341,6 +387,14 @@ export function scoreJob(job: JobForScoring) {
 
   if (advancedPostgres) {
     gaps.push(`Se requiere PostgreSQL avanzado (${advancedPostgres.internals.join(", ")}); el perfil acredita SQL/RLS, sin evidencia de esos internals.`);
+  }
+
+  if (productSecurity) {
+    gaps.push(`El puesto se centra en seguridad de producto (${productSecurity.activities.join(", ")}); el perfil confirma no tener experiencia en esa función.`);
+  }
+
+  if (absentTools) {
+    gaps.push(`Se requiere experiencia práctica en ${absentTools.skills.join(", ")}; el perfil confirma no haber usado esas herramientas.`);
   }
 
   if (specialistRequirement && specialistRequirement.years >= 3) {
@@ -412,6 +466,20 @@ export function scoreJob(job: JobForScoring) {
       skills: advancedPostgres.internals,
       candidate_scope: CANDIDATE_PROFILE.postgresExperience,
     }] : []),
+    ...(productSecurity ? [{
+      area: "product_security",
+      criticality: "central",
+      status: "unmet",
+      evidence: productSecurity.evidence,
+      activities: productSecurity.activities,
+    }] : []),
+    ...(absentTools ? [{
+      area: "confirmed_tool_gap",
+      criticality: "central",
+      status: "unmet",
+      evidence: absentTools.evidence,
+      skills: absentTools.skills,
+    }] : []),
     ...(specialistRequirement && specialistRequirement.years >= 3 ? [{
       area: "specialist_requirement",
       criticality: "central",
@@ -461,7 +529,9 @@ export function scoreJob(job: JobForScoring) {
       requirements_adjustment: {
         cap: requirementsCap,
         points_removed: baseScore - scoreAfterRequirements,
-        evidence: advancedPostgres ? advancedPostgres.evidence
+        evidence: productSecurity ? productSecurity.evidence
+          : absentTools ? absentTools.evidence
+          : advancedPostgres ? advancedPostgres.evidence
           : specialistRequirement && specialistRequirement.years >= 3
           ? specialistRequirement.evidence
           : developmentYears && developmentYears.years >= 5 ? developmentYears.evidence
@@ -488,7 +558,7 @@ export function scoreJob(job: JobForScoring) {
     risks,
     requirement_analysis: requirementAnalysis,
     recommended_cv: recommendedCv,
-    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}`,
+    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${productSecurity ? " Seguridad de producto no acreditada." : ""}${absentTools ? ` Requiere ${absentTools.skills.join("/")} sin experiencia previa.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}`,
     scoring_version: SCORING_VERSION,
     matched_at: new Date().toISOString(),
   };

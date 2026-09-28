@@ -1,4 +1,4 @@
-export const SCORING_VERSION = "rules-v1.3-2026-09-28";
+export const SCORING_VERSION = "rules-v1.4-2026-09-28";
 
 export const SCORING_WEIGHTS = {
   technical: 35,
@@ -13,6 +13,8 @@ export const CANDIDATE_PROFILE = {
   // Confirmed range; use the upper bound only to identify explicit requirements above it.
   supportExperienceMaxYears: 6,
   postgresExperience: "SQL/RLS; advanced database internals unverified",
+  // Confirmed by the candidate: no hands-on use of these tools or product security work.
+  confirmedNoExperience: ["AWS", "Terraform", "Kubernetes", "product security"],
   targetRoleTerms: [
     "full stack",
     "full-stack",
