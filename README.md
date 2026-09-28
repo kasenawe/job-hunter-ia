@@ -1,34 +1,156 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Hunter IA
 
-## Getting Started
+Job Hunter IA is a personal job-search assistant built to help Maximiliano Quintana find, evaluate, prioritize, prepare, and track relevant job opportunities.
 
-First, run the development server:
+The project is intentionally focused on one outcome: **improving the quality and efficiency of the job search**.
+
+## Current MVP
+
+The MVP currently supports:
+
+- importing remote jobs from Jobicy;
+- normalizing source-specific job data into a common internal model;
+- preserving raw source payloads for auditability;
+- filtering obvious non-relevant jobs without deleting historical records;
+- deterministic and explainable scoring against the candidate profile;
+- ranking active jobs by match score;
+- recommending a CV direction based on the strongest profile axis;
+- opening the original job offer.
+
+Scoring v1 is currently in QA and calibration.
+
+Planned MVP work includes:
+
+- detailed match explanations;
+- job detail view;
+- application status tracking;
+- cover letter generation;
+- additional job sources;
+- semi-assisted manual imports for sources such as LinkedIn.
+
+## Candidate positioning
+
+The system does not treat the candidate only as a Full Stack Developer.
+
+Matching considers four profile axes:
+
+1. Development
+2. Integrations / Implementation
+3. Technical / Functional
+4. Infrastructure / Support
+
+Hybrid roles can be more relevant than pure development roles when they make better use of the candidate's combined experience.
+
+## Stack
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Supabase / PostgreSQL
+- Vercel
+
+## Architecture
+
+The MVP uses a backend-only data access model:
+
+```text
+Browser
+  ↓
+Next.js on Vercel
+  ↓
+Server-side application code
+  ↓
+Supabase / PostgreSQL
+```
+
+Privileged Supabase credentials are never exposed to the browser.
+
+For the detailed technical architecture, see [docs/DEVELOPER.md](docs/DEVELOPER.md).
+
+## Environment variables
+
+Create a local `.env.local` file with:
+
+```bash
+SUPABASE_URL=
+SUPABASE_SECRET_KEY=
+```
+
+Never commit real secret values.
+
+## Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run locally:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run lint:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run lint
+```
 
-## Learn More
+Build:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Database changes are managed through Supabase migrations in:
 
-## Deploy on Vercel
+```text
+supabase/migrations/
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The current MVP data model includes:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `jobs`
+- `job_matches`
+- `applications`
+- `search_profiles`
+
+RLS is enabled and public browser roles do not have direct access to these tables.
+
+## Job sources
+
+### Implemented
+
+- Jobicy
+
+### Planned / evaluated
+
+- Remote OK
+- Greenhouse
+- Lever
+- Ashby
+- manual / semi-assisted imports
+- LinkedIn through manual or semi-assisted import rather than account automation
+
+The internal matching system is source-agnostic after normalization.
+
+## Development methodology
+
+The project uses lightweight **Spec-Driven Development (SDD)**.
+
+Product scope, backlog, feature specs, and acceptance criteria live in Notion. Repository behavior, code, tests, and technical documentation live in GitHub.
+
+See [AGENTS.md](AGENTS.md) for the project development rules and definition of done.
+
+## Deployment
+
+The application is deployed on Vercel:
+
+https://job-hunter-ia.vercel.app
+
+The repository's `main` branch is the deployment source.
