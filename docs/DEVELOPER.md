@@ -292,7 +292,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.2-2026-09-28`. Changes to scoring
+The current rule identifier is `rules-v1.3-2026-09-28`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -349,6 +349,10 @@ Jobicy. An explicit requirement of at least five years of professional
 development also reduces this component and is recorded as a gap. It limits
 the final score to 69 so a two-year development profile is not labelled a
 very strong match solely through keyword overlap.
+For support, database, and infrastructure roles, an explicit requirement above
+the candidate's confirmed 3–6 years of support/infra experience also reduces
+seniority and caps the final score at 69. This resolves conflicts between a
+source's `Junior` label and the actual tenure requested in the description.
 
 ### Language score
 
@@ -388,6 +392,11 @@ platform absent from the documented profile limits the score to 64. This is
 recorded as unverified rather than asserting that the candidate lacks the
 skill. Both requirement and location caps are recorded separately in
 `score_breakdown`, including each adjustment's removed points.
+An explicit requirement for advanced PostgreSQL internals (multiple examples
+such as autovacuum, WAL, and bloat) limits the score to 64. The documented
+candidate experience is SQL/RLS; operational internals are unverified. This
+requirement is recorded separately from keyword matches and does not penalize
+ordinary SQL/RLS support roles.
 
 ### Other requirements
 
