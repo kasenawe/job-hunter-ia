@@ -1,4 +1,4 @@
-import "server-only";
+import { seniorityFromTitle } from "@/lib/jobs/seniority";
 
 export type JobicyJob = {
   id?: number | string;
@@ -76,6 +76,8 @@ const iso = (v: unknown) => typeof v === "string" && !Number.isNaN(new Date(v).g
 
 export function isRelevantJobicyJob(job: JobicyJob) {
   const title = clean(job.jobTitle) ?? "";
+  // Automation alone is not enough to make a marketing role technical.
+  if (/marketing/i.test(title) && !/software (developer|engineer)|full[- ]?stack|back[- ]?end|front[- ]?end/i.test(title)) return false;
   if (STRONG.some((p) => p.test(title))) return true;
   if (EXCLUDE.some((p) => p.test(title))) return false;
   if (!GENERIC.some((p) => p.test(title))) return false;
@@ -147,7 +149,7 @@ export function normalizeJobicyJob(job: JobicyJob) {
     remote_scope: scope(job.jobGeo),
     workplace_type: "remote",
     employment_type: employment(job.jobType),
-    seniority: seniority(job.jobLevel),
+    seniority: seniorityFromTitle(title) ?? seniority(job.jobLevel),
     language: null,
     description_text: strip(job.jobDescription) || strip(job.jobExcerpt) || "Description unavailable",
     posted_at: iso(job.pubDate),

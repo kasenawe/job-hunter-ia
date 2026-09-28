@@ -17,7 +17,8 @@ The MVP currently supports:
 - recommending a CV direction based on the strongest profile axis;
 - opening the original job offer.
 
-Scoring v1 is currently in QA and calibration.
+Scoring v1.1 is currently in QA and calibration. Confirmed location exclusions
+remain visible for audit but are capped below the application-priority threshold.
 
 Planned MVP work includes:
 
@@ -97,6 +98,12 @@ Run lint:
 
 ```bash
 npm run lint
+```
+
+Run scoring regression tests:
+
+```bash
+npm run test:scoring
 ```
 
 Build:

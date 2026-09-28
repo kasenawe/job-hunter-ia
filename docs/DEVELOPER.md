@@ -292,6 +292,9 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
+The current rule identifier is `rules-v1.1-2026-09-28`. Changes to scoring
+behavior require a new identifier before rescoring persisted matches.
+
 ### Scoring weights
 
 Current weights:
@@ -312,7 +315,9 @@ The current rules detect unique occurrences of:
 - strong/direct candidate skills;
 - transferable candidate skills.
 
-Direct matches contribute more than transferable matches.
+Direct matches contribute more than transferable matches. Term matching uses
+word boundaries and collapses known aliases (`node`/`node.js`, `api`/`apis`,
+`postgres`/`postgresql`) to avoid inflating a score through overlapping words.
 
 The raw technical score is capped at 100 before applying the 35% weight.
 
@@ -320,7 +325,9 @@ The raw technical score is capped at 100 before applying the 35% weight.
 
 Each of the four profile axes is evaluated from title and description terms.
 
-Title matches receive more weight than body-only matches.
+Title matches receive more weight than body-only matches. Body-only evidence is
+capped at four distinct terms per axis so long descriptions do not automatically
+produce a perfect functional score.
 
 The strongest axis contributes to the experience/functions score.
 
@@ -336,7 +343,10 @@ The current heuristic treats:
 - Lead / Manager as larger gaps;
 - Staff / Principal / Director as progressively weaker fits.
 
-Seniority is a scoring factor, not a hard filter.
+Seniority is a scoring factor, not a hard filter. An explicit level in the title
+overrides a generic source label, including `Staff` roles marked `Senior` by
+Jobicy. An explicit requirement of at least five years of professional
+development also reduces this component and is recorded as a gap.
 
 ### Language score
 
@@ -358,11 +368,18 @@ Current logic strongly prefers:
 - LATAM;
 - Americas.
 
-Restricted roles in regions such as Europe, UK, APAC, Asia, or Australia receive a large penalty.
+Restricted roles in regions such as Europe, UK, APAC, Asia, or Australia receive
+a large penalty.
 
 US/Canada-only roles also receive a meaningful penalty.
 
-Location incompatibility does not delete a job; it lowers competitiveness.
+When the location or an explicit work-authorization requirement confirms that
+Uruguay is ineligible, the final score is capped at 54. This places the job in
+low priority without deleting it. Unknown geography is marked for manual review
+and does not receive that cap. The stored breakdown contains the weighted base
+score, eligibility status, cap, points removed, and evidence, so the final
+score can be reconstructed. This adjustment is outside the six additive weights
+because a confirmed exclusion is more consequential than a weak location fit.
 
 ### Other requirements
 
@@ -371,7 +388,13 @@ The current implementation considers:
 - employment type;
 - basic detected years-of-experience requirements.
 
-High explicit years requirements reduce this component and may be recorded as a risk.
+Years of professional development are considered under seniority. The other
+component now reflects employment type only.
+
+`requirement_analysis` records each component's criticality and status, with
+geography treated as central and explicit bonus qualifications marked desirable.
+It is a conservative first pass, not a complete parser of every sentence in an
+offer. Missing desired qualifications are not treated as exclusions.
 
 ### Score persistence
 
@@ -444,6 +467,10 @@ The acceptance process requires:
 - calibration if the ranking is conceptually wrong.
 
 Do not mark scoring v1 complete until these acceptance checks pass.
+
+Regression tests for geography, seniority, hybrid roles, and desirable
+requirements run with `npm run test:scoring`. Runtime QA still requires
+rescoring the stored active jobs and checking the new Top 10 manually.
 
 ## 12. Adding a new job source
 
