@@ -292,7 +292,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.1-2026-09-28`. Changes to scoring
+The current rule identifier is `rules-v1.2-2026-09-28`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -346,7 +346,9 @@ The current heuristic treats:
 Seniority is a scoring factor, not a hard filter. An explicit level in the title
 overrides a generic source label, including `Staff` roles marked `Senior` by
 Jobicy. An explicit requirement of at least five years of professional
-development also reduces this component and is recorded as a gap.
+development also reduces this component and is recorded as a gap. It limits
+the final score to 69 so a two-year development profile is not labelled a
+very strong match solely through keyword overlap.
 
 ### Language score
 
@@ -380,6 +382,12 @@ and does not receive that cap. The stored breakdown contains the weighted base
 score, eligibility status, cap, points removed, and evidence, so the final
 score can be reconstructed. This adjustment is outside the six additive weights
 because a confirmed exclusion is more consequential than a weak location fit.
+
+An explicit `(Required)` multi-year requirement for a specialist language or
+platform absent from the documented profile limits the score to 64. This is
+recorded as unverified rather than asserting that the candidate lacks the
+skill. Both requirement and location caps are recorded separately in
+`score_breakdown`, including each adjustment's removed points.
 
 ### Other requirements
 
