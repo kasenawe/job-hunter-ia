@@ -153,8 +153,9 @@ export default async function Home() {
           <p className="text-sm text-zinc-400">Fuente inicial</p>
           <h2 className="mt-1 text-xl font-medium">Jobicy</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            Importa ofertas remotas orientadas a desarrollo, soporte,
-            integraciones, implementación y análisis técnico.
+            Importa hasta 200 ofertas remotas del filtro LATAM de Jobicy,
+            incluidas las vacantes globales que ese filtro devuelve, y conserva
+            las relacionadas con desarrollo, soporte e integraciones.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-3">

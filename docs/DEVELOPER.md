@@ -194,7 +194,7 @@ Jobicy jobs are fetched from its remote-jobs API.
 
 Current behavior:
 
-- requests up to 200 jobs;
+- requests up to 200 jobs with Jobicy's `geo=latam` filter (which also returns worldwide listings);
 - prevents repeated external imports within one hour;
 - prefilters obviously irrelevant roles;
 - normalizes accepted rows;

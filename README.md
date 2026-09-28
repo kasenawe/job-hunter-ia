@@ -8,7 +8,7 @@ The project is intentionally focused on one outcome: **improving the quality and
 
 The MVP currently supports:
 
-- importing remote jobs from Jobicy;
+- importing remote jobs from Jobicy's LATAM feed, including its worldwide listings;
 - normalizing source-specific job data into a common internal model;
 - preserving raw source payloads for auditability;
 - filtering obvious non-relevant jobs without deleting historical records;

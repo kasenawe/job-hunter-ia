@@ -10,12 +10,14 @@ import {
 const JOBICY_ENDPOINT = "https://jobicy.com/api/v2/remote-jobs";
 const MIN_IMPORT_INTERVAL_MS = 60 * 60 * 1000;
 const JOBICY_COUNT = 200;
+const JOBICY_GEO = "latam";
 
 type JobicyResponse = { jobs?: JobicyJob[] };
 
 async function fetchJobicyJobs(): Promise<JobicyJob[]> {
   const url = new URL(JOBICY_ENDPOINT);
   url.searchParams.set("count", String(JOBICY_COUNT));
+  url.searchParams.set("geo", JOBICY_GEO);
 
   const response = await fetch(url, {
     cache: "no-store",
