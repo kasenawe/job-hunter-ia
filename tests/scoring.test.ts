@@ -113,10 +113,25 @@ test("explicit multi-year Go requirement is recorded as central and limits a bro
   assert.ok(match.gaps.some((gap) => gap.includes("4 años profesionales en Go")));
 });
 
-test("multi-domain support tenure is not misread as years of software development", () => {
+test("seven-year support and deep PostgreSQL internals override a Junior source label", () => {
   const match = scoreJob(job({
     title: "Database Support Engineer",
-    description_text: "You have 7+ years in technical support, databases, backend engineering, SRE, or a similar field. Troubleshoot Postgres queries and customer issues.",
+    seniority: "junior",
+    description_text: "You have 7+ years in technical support, databases, backend engineering, SRE, or a similar field. Postgres Expertise: You know PostgreSQL deeply—autovacuum behavior, WAL growth, long-running transactions, table bloat, and other internals. Troubleshoot Postgres queries and customer issues.",
+  }));
+  assert.equal(match.score_breakdown.raw.seniority, 45);
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "support_tenure" && item.criticality === "central"));
+  assert.ok(match.requirement_analysis.some((item) => item.area === "database_internals" && item.status === "unverified"));
+  assert.ok(match.gaps.some((gap) => gap.includes("3–6 años")));
+  assert.ok(match.total_score <= 64);
+});
+
+test("SQL/RLS support without an explicit internals requirement remains competitive", () => {
+  const match = scoreJob(job({
+    title: "Database Support Engineer",
+    description_text: "Support customers with PostgreSQL SQL, RLS, APIs and application queries; 4 years in technical support preferred.",
   }));
   assert.equal(match.score_breakdown.requirements_adjustment.cap, null);
+  assert.ok(!match.gaps.some((gap) => gap.includes("PostgreSQL avanzado")));
 });

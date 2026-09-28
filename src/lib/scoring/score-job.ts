@@ -165,6 +165,28 @@ function requiredDevelopmentYears(description: string, title: string) {
   return null;
 }
 
+function requiredSupportYears(description: string, title: string) {
+  if (!/support|database|infrastructure|sre/i.test(title)) return null;
+  const requirements = description.matchAll(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?(?:experience\s+)?(?:in\s+)?(technical support|database(?:s| support)?|infrastructure|sre)\b[^.!?\n]{0,90}/gi);
+  const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  for (const match of requirements) {
+    const years = words[match[1].toLowerCase()] ?? Number(match[1]);
+    if (years > CANDIDATE_PROFILE.supportExperienceMaxYears) {
+      return { years, evidence: match[0].trim() };
+    }
+  }
+  return null;
+}
+
+function requiredAdvancedPostgres(description: string, title: string) {
+  if (!/postgres|database/i.test(title)) return null;
+  const requirement = /(?:postgres(?:ql)? expertise|(?:know|understand) postgresql deeply)[^.!?\n]{0,200}/i.exec(description);
+  if (!requirement) return null;
+  const internals = ["autovacuum", "wal", "table bloat", "long-running transactions"]
+    .filter((term) => includesTerm(requirement[0], term));
+  return internals.length >= 2 ? { evidence: requirement[0].trim(), internals } : null;
+}
+
 function requiredUnverifiedSpecialistSkill(description: string) {
   const requirement = /\(required\)[^.]{0,130}?\b(\d{1,2})\+?\s+years?\b[^.]{0,140}?\b(Go|Golang|Kotlin|Android|Python|Java|C#|Ruby)\b/gi;
   for (const match of description.matchAll(requirement)) {
@@ -188,6 +210,8 @@ export function scoreJob(job: JobForScoring) {
   const text = `${job.title} ${job.description_text}`.toLowerCase();
   const effectiveSeniority = seniorityFromTitle(job.title) ?? job.seniority;
   const developmentYears = requiredDevelopmentYears(job.description_text, job.title);
+  const supportYears = requiredSupportYears(job.description_text, job.title);
+  const advancedPostgres = requiredAdvancedPostgres(job.description_text, job.title);
   const specialistRequirement = requiredUnverifiedSpecialistSkill(job.description_text);
   const desirableStart = /\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\))/i.exec(job.description_text)?.index;
   const desirableMatches = desirableStart === undefined
@@ -240,7 +264,7 @@ export function scoreJob(job: JobForScoring) {
     (titleTargeted ? 35 : 15) + Math.round(bestAxis * 0.65),
   );
 
-  const seniorityRaw = developmentYears && developmentYears.years >= 5
+  const seniorityRaw = (developmentYears && developmentYears.years >= 5) || supportYears
     ? Math.min(scoreSeniority(effectiveSeniority), 45)
     : scoreSeniority(effectiveSeniority);
   const languageRaw = scoreLanguage(text, job.language);
@@ -272,9 +296,9 @@ export function scoreJob(job: JobForScoring) {
   );
   // Central requirements limit the recommendation category without altering
   // the six weighted components; each adjustment remains auditable.
-  const requirementsCap = specialistRequirement && specialistRequirement.years >= 3
+  const requirementsCap = (specialistRequirement && specialistRequirement.years >= 3) || advancedPostgres
     ? 64
-    : developmentYears && developmentYears.years >= 5 ? 69 : null;
+    : (developmentYears && developmentYears.years >= 5) || supportYears ? 69 : null;
   const scoreAfterRequirements = requirementsCap === null ? baseScore : Math.min(baseScore, requirementsCap);
   const eligibilityCap = location.eligibility === "incompatible" ? 54 : null;
   const totalScore = eligibilityCap === null ? scoreAfterRequirements : Math.min(scoreAfterRequirements, eligibilityCap);
@@ -309,6 +333,14 @@ export function scoreJob(job: JobForScoring) {
 
   if (developmentYears && developmentYears.years >= 5) {
     gaps.push(`Se solicitan ${developmentYears.years} años de desarrollo profesional; el perfil acredita aproximadamente 2.`);
+  }
+
+  if (supportYears) {
+    gaps.push(`Se solicitan ${supportYears.years} años en soporte/bases de datos o áreas afines; el perfil declara 3–6 años en soporte/infraestructura.`);
+  }
+
+  if (advancedPostgres) {
+    gaps.push(`Se requiere PostgreSQL avanzado (${advancedPostgres.internals.join(", ")}); el perfil acredita SQL/RLS, sin evidencia de esos internals.`);
   }
 
   if (specialistRequirement && specialistRequirement.years >= 3) {
@@ -355,14 +387,31 @@ export function scoreJob(job: JobForScoring) {
     },
     {
       area: "seniority",
-      criticality: developmentYears && developmentYears.years >= 5 ? "central" : "important",
+      criticality: (developmentYears && developmentYears.years >= 5) || supportYears ? "central" : "important",
       status: seniorityRaw <= 45 ? "gap" : "partial",
       weight: SCORING_WEIGHTS.seniority,
       raw_score: seniorityRaw,
       source_value: job.seniority,
       value: effectiveSeniority,
       development_years: developmentYears,
+      support_years: supportYears,
     },
+    ...(supportYears ? [{
+      area: "support_tenure",
+      criticality: "central",
+      status: "gap",
+      evidence: supportYears.evidence,
+      years: supportYears.years,
+      candidate_max_years: CANDIDATE_PROFILE.supportExperienceMaxYears,
+    }] : []),
+    ...(advancedPostgres ? [{
+      area: "database_internals",
+      criticality: "central",
+      status: "unverified",
+      evidence: advancedPostgres.evidence,
+      skills: advancedPostgres.internals,
+      candidate_scope: CANDIDATE_PROFILE.postgresExperience,
+    }] : []),
     ...(specialistRequirement && specialistRequirement.years >= 3 ? [{
       area: "specialist_requirement",
       criticality: "central",
@@ -412,9 +461,11 @@ export function scoreJob(job: JobForScoring) {
       requirements_adjustment: {
         cap: requirementsCap,
         points_removed: baseScore - scoreAfterRequirements,
-        evidence: specialistRequirement && specialistRequirement.years >= 3
+        evidence: advancedPostgres ? advancedPostgres.evidence
+          : specialistRequirement && specialistRequirement.years >= 3
           ? specialistRequirement.evidence
-          : developmentYears && developmentYears.years >= 5 ? developmentYears.evidence : null,
+          : developmentYears && developmentYears.years >= 5 ? developmentYears.evidence
+          : supportYears?.evidence ?? null,
       },
       eligibility_adjustment: {
         status: location.eligibility,
@@ -437,7 +488,7 @@ export function scoreJob(job: JobForScoring) {
     risks,
     requirement_analysis: requirementAnalysis,
     recommended_cv: recommendedCv,
-    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}`,
+    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}`,
     scoring_version: SCORING_VERSION,
     matched_at: new Date().toISOString(),
   };
