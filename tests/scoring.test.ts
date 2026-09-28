@@ -135,3 +135,52 @@ test("SQL/RLS support without an explicit internals requirement remains competit
   assert.equal(match.score_breakdown.requirements_adjustment.cap, null);
   assert.ok(!match.gaps.some((gap) => gap.includes("PostgreSQL avanzado")));
 });
+
+test("security engineering as the primary function is a confirmed central gap", () => {
+  const match = scoreJob(job({
+    title: "Security Software Engineer",
+    seniority: "senior",
+    description_text: "Build React and Node.js APIs. Their primary focus is to challenge the team to think more deeply about security through threat modeling, static analysis tools, and fuzzing. These roles encompass product security and vulnerability response.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "product_security" && item.status === "unmet"));
+  assert.ok(match.gaps.some((gap) => gap.includes("no tener experiencia")));
+});
+
+test("mandatory cloud operations stack is a gap, while bonus tools are not", () => {
+  const required = scoreJob(job({
+    title: "Infrastructure Engineer",
+    description_text: "Operate Linux servers, networks, APIs, and TypeScript automation. Qualifications: Strong proficiency with AWS services. Hands-on experience utilizing Terraform for Infrastructure as Code. Solid understanding of Kubernetes concepts. Nice to Have: Go and security certifications.",
+  }));
+  const bonus = scoreJob(job({
+    title: "Infrastructure Engineer",
+    description_text: "Operate Linux servers and networks. Qualifications: Support and troubleshoot production systems. Nice to Have: AWS, Terraform, Kubernetes.",
+  }));
+  assert.equal(required.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(required.requirement_analysis.some((item) => item.area === "confirmed_tool_gap" && item.status === "unmet" && item.skills?.length === 3));
+  assert.equal(bonus.score_breakdown.requirements_adjustment.cap, null);
+});
+
+test("a must-have AWS role and ownership of a Terraform provider expose confirmed tool gaps", () => {
+  const aws = scoreJob(job({
+    title: "Senior AI Solutions Engineer",
+    description_text: "Build React integrations and APIs. Requirements: 5+ years of software engineering experience. Must Have: Strong Python development experience. Hands-on experience with AWS Bedrock. Experience building AI Agents. Nice to Have: PHP and CRM.",
+  }));
+  const terraform = scoreJob(job({
+    title: "Software Engineer: IaC Platform Experience",
+    description_text: "Own the Terraform provider as a core part of the platform. Build TypeScript APIs and Go provider resources.",
+  }));
+  assert.equal(aws.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(aws.requirement_analysis.some((item) => item.area === "confirmed_tool_gap" && item.skills?.includes("AWS")));
+  assert.equal(terraform.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(terraform.requirement_analysis.some((item) => item.area === "confirmed_tool_gap" && item.skills?.includes("Terraform")));
+});
+
+test("a Staff responsibility is not treated as Senior from the feed title", () => {
+  const match = scoreJob(job({
+    title: "Senior Software Engineer, Backend",
+    seniority: "senior",
+    description_text: "Responsibilities Staff Backend Engineer who blends systems thinking with product pragmatism. Build Node.js APIs and SQL integrations.",
+  }));
+  assert.ok(match.requirement_analysis.some((item) => item.area === "seniority" && item.value === "staff" && item.raw_score === 25));
+});

@@ -292,7 +292,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.3-2026-09-28`. Changes to scoring
+The current rule identifier is `rules-v1.4-2026-09-28`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -353,6 +353,8 @@ For support, database, and infrastructure roles, an explicit requirement above
 the candidate's confirmed 3–6 years of support/infra experience also reduces
 seniority and caps the final score at 69. This resolves conflicts between a
 source's `Junior` label and the actual tenure requested in the description.
+An explicit `Staff Engineer` responsibility in the posting also overrides a
+`Senior` title/label when it describes the role itself.
 
 ### Language score
 
@@ -397,6 +399,12 @@ such as autovacuum, WAL, and bloat) limits the score to 64. The documented
 candidate experience is SQL/RLS; operational internals are unverified. This
 requirement is recorded separately from keyword matches and does not penalize
 ordinary SQL/RLS support roles.
+The candidate confirmed no hands-on AWS, Terraform, or Kubernetes use and no
+product security experience. Security engineering roles whose primary function
+includes multiple product security activities, infrastructure roles with
+multiple mandatory cloud operations tools, explicit `Must Have` AWS experience,
+and ownership of a Terraform provider are capped at 64 and recorded as
+confirmed central gaps. Mentions under `Nice to Have` do not trigger this cap.
 
 ### Other requirements
 
