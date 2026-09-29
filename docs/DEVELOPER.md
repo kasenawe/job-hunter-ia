@@ -177,6 +177,30 @@ matching/scoring
 
 The scoring engine should not care which source produced a job after normalization.
 
+### Get on Board
+
+`src/lib/jobs/getonbrd.ts` fetches the public API categories `programming`,
+`sysadmin-devops-qa`, `technical-support`, `customer-support`, and
+`innovation-agile`, including all pages. Imports are throttled to once per
+hour. Published jobs from the last 60 days with relevant titles are upserted
+in batches; previously stored jobs absent from the completed feed are marked
+inactive without deleting application history. A failed API page aborts before
+that deactivation step.
+
+`src/lib/jobs/normalize-getonbrd.ts` expands company and allowed location
+relations. Fully remote roles are eligible worldwide; locally remote roles
+are active only when the allowed countries or regions include Uruguay or
+South America. Uruguay on-site or hybrid roles are eligible. Ambiguous and
+incompatible locations are preserved as inactive rows for audit. Raw source
+data and the geographic decision are stored with normalization version
+`getonbrd-v1`.
+
+The home-page action imports and rescores active rows. Production's
+`/api/cron/import-jobs` route imports both Jobicy and Get on Board daily at
+12:00 UTC, then scores active jobs. It returns 401 unless the Authorization
+header matches `Bearer ${CRON_SECRET}`. Preview deployments do not run the
+Vercel schedule. Set `CRON_SECRET` before deploying the cron to production.
+
 ## 7. Jobicy integration
 
 Current source implementation:
@@ -449,6 +473,7 @@ It currently exposes development/MVP controls and QA information:
 - inactive jobs;
 - active jobs with score;
 - Jobicy import action;
+- Get on Board import and scoring action;
 - safe reprocessing action;
 - scoring v1 action;
 - a Top 10 priority table for eligible or geographically uncertain matches;
@@ -465,6 +490,7 @@ Current server actions include:
 
 ```text
 src/app/actions/import-jobicy.ts
+src/app/actions/import-getonbrd.ts
 src/app/actions/score-jobs.ts
 ```
 
@@ -516,11 +542,12 @@ Prefer simple parallel adapters first.
 
 ## 13. Planned source strategy
 
-Current implemented source:
+Current implemented sources:
 
 - Jobicy.
+- Get on Board.
 
-Next likely source:
+Another source to assess by marginal eligible jobs:
 
 - Remote OK.
 

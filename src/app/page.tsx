@@ -4,6 +4,7 @@ import {
   importJobicyJobsAction,
   reprocessStoredJobicyJobsAction,
 } from "@/app/actions/import-jobicy";
+import { importGetOnBrdJobsAction } from "@/app/actions/import-getonbrd";
 import { scoreActiveJobsAction } from "@/app/actions/score-jobs";
 import { SubmitButton } from "@/components/submit-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -150,8 +151,8 @@ export default async function Home() {
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-400">Fuente inicial</p>
-          <h2 className="mt-1 text-xl font-medium">Jobicy</h2>
+          <p className="text-sm text-zinc-400">Fuentes automáticas</p>
+          <h2 className="mt-1 text-xl font-medium">Jobicy y Get on Board</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
             Importa hasta 200 ofertas remotas del filtro LATAM de Jobicy,
             incluidas las vacantes globales que ese filtro devuelve, y conserva
@@ -171,6 +172,15 @@ export default async function Home() {
               </SubmitButton>
             </form>
           </div>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-400">
+            Get on Board busca desarrollo, soporte, infraestructura e integraciones.
+            Verifica las regiones permitidas antes de incluir una oferta en el ranking.
+          </p>
+          <form action={importGetOnBrdJobsAction} className="mt-4">
+            <SubmitButton pendingLabel="Buscando y puntuando..." variant="secondary">
+              Buscar ofertas en Get on Board
+            </SubmitButton>
+          </form>
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900">
