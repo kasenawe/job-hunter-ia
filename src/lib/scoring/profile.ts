@@ -1,4 +1,4 @@
-export const SCORING_VERSION = "rules-v1.4-2026-09-28";
+export const SCORING_VERSION = "rules-v1.5-2026-09-29";
 
 export const SCORING_WEIGHTS = {
   technical: 35,

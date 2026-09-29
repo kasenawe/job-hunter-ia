@@ -85,11 +85,11 @@ function scoreLanguage(text: string, language: string | null) {
     return 55;
   }
 
-  if (/fluent english|advanced english|professional english/.test(text)) {
+  if (/fluent english|advanced english|professional english|professional written and spoken english/.test(text)) {
     return 65;
   }
 
-  if (/english required|english proficiency|strong english/.test(text)) {
+  if (/english required|english proficiency|strong english|strong written and verbal english/.test(text)) {
     return 75;
   }
 
