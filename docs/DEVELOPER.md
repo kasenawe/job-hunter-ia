@@ -316,7 +316,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.6-2026-09-29`. Changes to scoring
+The current rule identifier is `rules-v1.7-2026-09-29`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -438,6 +438,13 @@ weighted score and sentence-level evidence. The Get on Board normalizer marks
 its separate `desirable` field with `Deseable:` (`getonbrd-v2`) so optional
 skills are excluded from the central-requirement check. Existing rows require
 reimport before rescoring to gain this distinction.
+The v1.7 calibration covers explicit multi-year AWS operation and LLM
+integrations in production, additional specialist backend stacks, and
+four-year development requirements. Professional or fluent English is a
+central gap relative to the declared conversational level and caps a
+recommendation at 69 unless another central skill imposes 64. A Senior
+development title without a stricter cap cannot be labeled a very strong match
+(cap 84).
 
 ### Other requirements
 

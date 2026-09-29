@@ -75,8 +75,6 @@ function scoreSeniority(seniority: string | null) {
 function scoreLanguage(text: string, language: string | null) {
   const explicit = (language ?? "").toLowerCase();
 
-  if (explicit.includes("spanish")) return 100;
-
   if (
     /native english|english native|c2 english|c1 english|native-level english|exceptional (?:written and spoken )?english/.test(
       text,
@@ -85,7 +83,7 @@ function scoreLanguage(text: string, language: string | null) {
     return 55;
   }
 
-  if (/fluent english|advanced english|professional english|professional written and spoken english/.test(text)) {
+  if (/fluent (?:professional )?english|advanced english|professional english|professional written and spoken english|professional working proficiency in english/.test(text)) {
     return 65;
   }
 
@@ -93,7 +91,7 @@ function scoreLanguage(text: string, language: string | null) {
     return 75;
   }
 
-  return 80;
+  return explicit.includes("spanish") ? 100 : 80;
 }
 
 function scoreLocation(job: JobForScoring) {
@@ -154,10 +152,10 @@ function requiredDevelopmentYears(description: string, title: string) {
   for (const match of requirements) {
     const context = match[2].toLowerCase();
     if (/^(?:experience\s+)?in\s+(?:technical support|databases|database support|sre)\b/.test(context)) continue;
-    const development = /software (?:development|engineering)|web (?:development|application)|backend|frontend|full[- ]stack/.test(context);
-    const genericDevelopment = /^(?:professional )?experience\b/.test(context) &&
+    const development = /software (?:development|engineering)|web (?:development|application)|backend|frontend|full[- ]?stack/.test(context);
+    const genericDevelopment = /^(?:(?:professional|proven) )?experience\b/.test(context) &&
       !/^experience\s+(?:in|with)\s+(?:technical support|databases|sre)\b/.test(context) &&
-      /developer|software engineer|full[- ]stack/i.test(title);
+      /developer|software engineer|full[- ]?stack/i.test(title);
     if (development || genericDevelopment) {
       return { years: words[match[1].toLowerCase()] ?? Number(match[1]), evidence: match[0].trim() };
     }
@@ -245,13 +243,13 @@ function requiredSpecialistSkills(description: string) {
   // Only inspect the required portion. Get on Board stores its optional skills
   // after the main description, while other sources use inline bonus headings.
   const requiredText = description.split(/\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\)|deseables?|ser[aá] un plus|se valora(?:r[aá])?)\s*:/i)[0];
-  const skills = ["AWS", "Terraform", "Kubernetes", "Python", "Django", "FastAPI", "Go", "Golang", "NestJS"];
+  const skills = ["AWS", "Terraform", "Kubernetes", "Python", "Django", "FastAPI", "Go", "Golang", "NestJS", "C#", ".NET", "Java", "Spring Boot", "Angular"];
   const documented = [...CANDIDATE_PROFILE.strongSkills, ...CANDIDATE_PROFILE.transferableSkills];
   const sentences = requiredText.split(/(?<=[.!?])\s+|\n+/);
   const gaps: { skill: string; status: "unmet" | "unverified"; evidence: string }[] = [];
 
   for (const sentence of sentences) {
-    if (!/(?:experiencia (?:s[oó]lida |pr[aá]ctica |profesional |comprobable )?(?:desarrollando|trabajando|dise[nñ]ando|operando|utilizando|con|en)|hands-on experience|strong (?:proficiency|experience|expertise)|dominio de|proficien(?:t|cy) (?:in|with)|expertise (?:in|with)|required)/i.test(sentence)) continue;
+    if (!/(?:experiencia (?:s[oó]lida |pr[aá]ctica |profesional |comprobable )?(?:desarrollando|trabajando|dise[nñ]ando|operando|utilizando|con|en)|hands-on experience|strong (?:proficiency|experience|expertise)|dominio de|proficien(?:t|cy) (?:in|with)|expertise (?:in|with)|required|\d+\+?\s+(?:years?|a[nñ]os)\s+(?:of |de )?(?:experience|experiencia|en)|\bAWS en producci[oó]n)/i.test(sentence)) continue;
     for (const skill of skills) {
       if (!includesTerm(sentence, skill) || documented.some((known) => known.toLowerCase() === skill.toLowerCase()) || gaps.some((gap) => gap.skill === skill)) continue;
       gaps.push({
@@ -259,6 +257,9 @@ function requiredSpecialistSkills(description: string) {
         status: CANDIDATE_PROFILE.confirmedNoExperience.some((known) => known === skill) ? "unmet" : "unverified",
         evidence: sentence.trim().slice(0, 240),
       });
+    }
+    if (/\b(?:LLMs?|large language models)\b/i.test(sentence) && /\bproduction\b|\bproducci[oó]n\b/i.test(sentence) && !gaps.some((gap) => gap.skill === "LLM production")) {
+      gaps.push({ skill: "LLM production", status: "unverified", evidence: sentence.trim().slice(0, 240) });
     }
   }
   return gaps;
@@ -334,7 +335,7 @@ export function scoreJob(job: JobForScoring) {
     (titleTargeted ? 35 : 15) + Math.round(bestAxis * 0.65),
   );
 
-  const seniorityRaw = (developmentYears && developmentYears.years >= 5) || supportYears
+  const seniorityRaw = (developmentYears && developmentYears.years >= 4) || supportYears
     ? Math.min(scoreSeniority(effectiveSeniority), 45)
     : scoreSeniority(effectiveSeniority);
   const languageRaw = scoreLanguage(text, job.language);
@@ -368,7 +369,8 @@ export function scoreJob(job: JobForScoring) {
   // the six weighted components; each adjustment remains auditable.
   const requirementsCap = (specialistRequirement && specialistRequirement.years >= 3) || advancedPostgres || productSecurity || absentTools || specialistSkills.length
     ? 64
-    : (developmentYears && developmentYears.years >= 5) || supportYears ? 69 : null;
+    : (developmentYears && developmentYears.years >= 4) || supportYears || languageRaw <= 65 ? 69
+    : effectiveSeniority === "senior" && /developer|software engineer|full[- ]?stack/i.test(job.title) ? 84 : null;
   const scoreAfterRequirements = requirementsCap === null ? baseScore : Math.min(baseScore, requirementsCap);
   const eligibilityCap = location.eligibility === "incompatible" ? 54 : null;
   const totalScore = eligibilityCap === null ? scoreAfterRequirements : Math.min(scoreAfterRequirements, eligibilityCap);
@@ -401,7 +403,7 @@ export function scoreJob(job: JobForScoring) {
     gaps.push(`Seniority solicitado: ${effectiveSeniority}.`);
   }
 
-  if (developmentYears && developmentYears.years >= 5) {
+  if (developmentYears && developmentYears.years >= 4) {
     gaps.push(`Se solicitan ${developmentYears.years} años de desarrollo profesional; el perfil acredita aproximadamente 2.`);
   }
 
@@ -480,7 +482,7 @@ export function scoreJob(job: JobForScoring) {
     },
     {
       area: "seniority",
-      criticality: (developmentYears && developmentYears.years >= 5) || supportYears ? "central" : "important",
+      criticality: (developmentYears && developmentYears.years >= 4) || supportYears ? "central" : "important",
       status: seniorityRaw <= 45 ? "gap" : "partial",
       weight: SCORING_WEIGHTS.seniority,
       raw_score: seniorityRaw,
@@ -536,7 +538,7 @@ export function scoreJob(job: JobForScoring) {
     })),
     {
       area: "language",
-      criticality: "important",
+      criticality: languageRaw <= 65 ? "central" : "important",
       status: languageRaw <= 65 ? "gap" : "uncertain",
       weight: SCORING_WEIGHTS.language,
       raw_score: languageRaw,
@@ -581,8 +583,9 @@ export function scoreJob(job: JobForScoring) {
           : specialistRequirement && specialistRequirement.years >= 3
           ? specialistRequirement.evidence
           : specialistSkills[0] ? specialistSkills[0].evidence
-          : developmentYears && developmentYears.years >= 5 ? developmentYears.evidence
-          : supportYears?.evidence ?? null,
+          : developmentYears && developmentYears.years >= 4 ? developmentYears.evidence
+          : languageRaw <= 65 ? "Inglés profesional/fluido exigido; nivel conversacional declarado"
+          : supportYears?.evidence ?? (requirementsCap === 84 ? "Título Senior en desarrollo; aproximadamente dos años profesionales acreditados" : null),
       },
       eligibility_adjustment: {
         status: location.eligibility,
@@ -605,7 +608,7 @@ export function scoreJob(job: JobForScoring) {
     risks,
     requirement_analysis: requirementAnalysis,
     recommended_cv: recommendedCv,
-    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${productSecurity ? " Seguridad de producto no acreditada." : ""}${absentTools ? ` Requiere ${absentTools.skills.join("/")} sin experiencia previa.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}${specialistSkills.length ? ` Requisito central: ${specialistSkills.map(({ skill }) => skill).join(", ")}.` : ""}`,
+    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 4 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${productSecurity ? " Seguridad de producto no acreditada." : ""}${absentTools ? ` Requiere ${absentTools.skills.join("/")} sin experiencia previa.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}${specialistSkills.length ? ` Requisito central: ${specialistSkills.map(({ skill }) => skill).join(", ")}.` : ""}`,
     scoring_version: SCORING_VERSION,
     matched_at: new Date().toISOString(),
   };

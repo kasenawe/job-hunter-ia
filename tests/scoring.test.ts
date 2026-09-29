@@ -224,3 +224,39 @@ test("bonus skills in Spanish or English do not trigger a central gap", () => {
   assert.equal(match.score_breakdown.requirements_adjustment.cap, null);
   assert.equal(english.score_breakdown.requirements_adjustment.cap, null);
 });
+
+test("Niuro-like production AWS and LLM tenure cannot be a very strong match", () => {
+  const match = scoreJob(job({
+    title: "Mid Level Full-Stack Developer",
+    seniority: "mid",
+    description_text: "3+ years of experience in full-stack software development. 1+ years of experience deploying and operating services on AWS. 1+ years of experience integrating LLMs into production applications. Solid React, TypeScript, Node.js and PostgreSQL experience.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "AWS" && item.status === "unmet"));
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "LLM production" && item.status === "unverified"));
+});
+
+test("professional fluency in a Spanish or English listing is a central language gap", () => {
+  const fluent = scoreJob(job({ title: "Senior Full-Stack Product Engineer", language: "English", description_text: "React, TypeScript, APIs. Fluent professional English." }));
+  const spanish = scoreJob(job({ language: "Spanish", description_text: "Desarrollar con React y SQL. Inglés profesional escrito y hablado. Professional working proficiency in English." }));
+  assert.equal(fluent.score_breakdown.raw.language, 65);
+  assert.equal(fluent.score_breakdown.requirements_adjustment.cap, 69);
+  assert.equal(spanish.score_breakdown.raw.language, 65);
+  assert.ok(spanish.requirement_analysis.some((item) => item.area === "language" && item.criticality === "central"));
+});
+
+test("explicit four-year full-stack tenure and C#/.NET requirements constrain senior roles", () => {
+  const tenure = scoreJob(job({ title: "Senior Full-Stack Engineer", seniority: "senior", description_text: "React, TypeScript, APIs. Qualifications 4+ years of full-stack software development experience." }));
+  const specialist = scoreJob(job({ title: "Full-Stack C#/.NET + React", seniority: "senior", description_text: "4+ años en C# / .NET con ASP.NET Core. React con TypeScript en producción. AWS en producción." }));
+  assert.equal(tenure.score_breakdown.requirements_adjustment.cap, 69);
+  assert.ok(tenure.gaps.some((gap) => gap.includes("4 años")));
+  assert.equal(specialist.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(specialist.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "C#"));
+  assert.ok(specialist.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "AWS"));
+});
+
+test("a senior developer title alone cannot be a very strong recommendation", () => {
+  const match = scoreJob(job({ title: "Senior Full-Stack Developer", seniority: "senior", description_text: "Build React and PHP integrations with MySQL, Node.js, TypeScript, SQL and APIs." }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 84);
+  assert.ok(match.total_score <= 84);
+});
