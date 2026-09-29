@@ -316,7 +316,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.7-2026-09-29`. Changes to scoring
+The current rule identifier is `rules-v1.8-2026-09-29`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -445,6 +445,11 @@ central gap relative to the declared conversational level and caps a
 recommendation at 69 unless another central skill imposes 64. A Senior
 development title without a stricter cap cannot be labeled a very strong match
 (cap 84).
+The v1.8 follow-up treats Ruby on Rails in a role title as a central unverified
+skill even when the source puts it in `desirable`, recognizes explicit custom
+WordPress development and AWS operations, and reads a `5–10 years` range from
+its minimum. Get on Board may place core qualifications in its `desirable`
+field, so this field still needs manual QA for conflicting source data.
 
 ### Other requirements
 

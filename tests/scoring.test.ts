@@ -260,3 +260,22 @@ test("a senior developer title alone cannot be a very strong recommendation", ()
   assert.equal(match.score_breakdown.requirements_adjustment.cap, 84);
   assert.ok(match.total_score <= 84);
 });
+
+test("a Ruby on Rails role remains a central unverified gap even if the source places it under desirable", () => {
+  const match = scoreJob(job({
+    title: "Software Developer Full-Stack React RoR",
+    description_text: "Desarrollar productos con React, SQL y APIs. Deseable: Principalmente conocimientos en React y Ruby on Rails.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "Ruby on Rails" && item.status === "unverified"));
+});
+
+test("custom WordPress work and AWS operations are central, while broad knowledge alone is not", () => {
+  const wordpress = scoreJob(job({ title: "Full-Stack Developer", description_text: "PHP, JavaScript and APIs. Custom WordPress development experience. Hands-on conversion tracking experience." }));
+  const aws = scoreJob(job({ title: "Software Engineer II", description_text: "Fluency in English. 5–10 years of professional software engineering experience. Experience working with AWS services and cloud-based architectures." }));
+  assert.equal(wordpress.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(wordpress.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "WordPress"));
+  assert.equal(aws.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(aws.gaps.some((gap) => gap.includes("5 años de desarrollo")));
+  assert.equal(aws.score_breakdown.raw.language, 65);
+});

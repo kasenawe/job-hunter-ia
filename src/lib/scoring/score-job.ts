@@ -83,7 +83,7 @@ function scoreLanguage(text: string, language: string | null) {
     return 55;
   }
 
-  if (/fluent (?:professional )?english|advanced english|professional english|professional written and spoken english|professional working proficiency in english/.test(text)) {
+  if (/fluent (?:professional )?english|fluency in english|advanced english|professional english|professional written and spoken english|professional working proficiency in english/.test(text)) {
     return 65;
   }
 
@@ -147,7 +147,7 @@ function scoreOther(job: JobForScoring) {
 }
 
 function requiredDevelopmentYears(description: string, title: string) {
-  const requirements = description.matchAll(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?([^.!?\n]{0,120})/gi);
+  const requirements = description.matchAll(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s*[–-]\s*\d{1,2})?(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?([^.!?\n]{0,120})/gi);
   const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
   for (const match of requirements) {
     const context = match[2].toLowerCase();
@@ -239,17 +239,20 @@ function requiredUnverifiedSpecialistSkill(description: string) {
   return null;
 }
 
-function requiredSpecialistSkills(description: string) {
+function requiredSpecialistSkills(description: string, title: string) {
   // Only inspect the required portion. Get on Board stores its optional skills
   // after the main description, while other sources use inline bonus headings.
   const requiredText = description.split(/\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\)|deseables?|ser[aá] un plus|se valora(?:r[aá])?)\s*:/i)[0];
-  const skills = ["AWS", "Terraform", "Kubernetes", "Python", "Django", "FastAPI", "Go", "Golang", "NestJS", "C#", ".NET", "Java", "Spring Boot", "Angular"];
+  const skills = ["AWS", "Terraform", "Kubernetes", "Python", "Django", "FastAPI", "Go", "Golang", "NestJS", "C#", ".NET", "Java", "Spring Boot", "Angular", "WordPress"];
   const documented = [...CANDIDATE_PROFILE.strongSkills, ...CANDIDATE_PROFILE.transferableSkills];
   const sentences = requiredText.split(/(?<=[.!?])\s+|\n+/);
   const gaps: { skill: string; status: "unmet" | "unverified"; evidence: string }[] = [];
+  if (/\b(?:RoR|Ruby on Rails)\b/i.test(title)) {
+    gaps.push({ skill: "Ruby on Rails", status: "unverified", evidence: `Stack indicado en el título: ${title}` });
+  }
 
   for (const sentence of sentences) {
-    if (!/(?:experiencia (?:s[oó]lida |pr[aá]ctica |profesional |comprobable )?(?:desarrollando|trabajando|dise[nñ]ando|operando|utilizando|con|en)|hands-on experience|strong (?:proficiency|experience|expertise)|dominio de|proficien(?:t|cy) (?:in|with)|expertise (?:in|with)|required|\d+\+?\s+(?:years?|a[nñ]os)\s+(?:of |de )?(?:experience|experiencia|en)|\bAWS en producci[oó]n)/i.test(sentence)) continue;
+    if (!/(?:experiencia (?:s[oó]lida |pr[aá]ctica |profesional |comprobable )?(?:desarrollando|trabajando|dise[nñ]ando|operando|utilizando|con|en)|(?:hands-on|strong|solid) (?:proficiency|experience|expertise)|experience working with|custom WordPress development experience|dominio de|proficien(?:t|cy) (?:in|with)|expertise (?:in|with)|required|\d+\+?\s+(?:years?|a[nñ]os)\s+(?:of |de )?(?:experience|experiencia|en)|\bAWS en producci[oó]n)/i.test(sentence)) continue;
     for (const skill of skills) {
       if (!includesTerm(sentence, skill) || documented.some((known) => known.toLowerCase() === skill.toLowerCase()) || gaps.some((gap) => gap.skill === skill)) continue;
       gaps.push({
@@ -283,7 +286,7 @@ export function scoreJob(job: JobForScoring) {
   const productSecurity = requiredProductSecurity(job.description_text, job.title);
   const absentTools = requiredConfirmedAbsentTools(job.description_text, job.title);
   const specialistRequirement = requiredUnverifiedSpecialistSkill(job.description_text);
-  const specialistSkills = requiredSpecialistSkills(job.description_text);
+  const specialistSkills = requiredSpecialistSkills(job.description_text, job.title);
   const desirableStart = /\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\))/i.exec(job.description_text)?.index;
   const desirableMatches = desirableStart === undefined
     ? []
