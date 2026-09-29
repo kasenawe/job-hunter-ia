@@ -93,6 +93,14 @@ test("exceptional written and spoken English is a visible gap for conversational
   assert.equal(match.score_breakdown.eligibility_adjustment.status, "eligible");
 });
 
+test("professional or strong written and spoken English is not treated as unspecified", () => {
+  const professional = scoreJob(job({ description_text: "Build React frontends. Professional written and spoken English." }));
+  const strong = scoreJob(job({ description_text: "Support Linux users. Strong written and verbal English communication skills." }));
+  assert.equal(professional.score_breakdown.raw.language, 65);
+  assert.equal(strong.score_breakdown.raw.language, 75);
+  assert.ok(professional.gaps.some((gap) => gap.includes("inglés más alto")));
+});
+
 test("five years of PHP software engineering cannot be a very strong match with two years of development", () => {
   const match = scoreJob(job({
     title: "Senior Software Engineer",

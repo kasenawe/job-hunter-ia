@@ -292,7 +292,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.4-2026-09-28`. Changes to scoring
+The current rule identifier is `rules-v1.5-2026-09-29`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
