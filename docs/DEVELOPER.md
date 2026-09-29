@@ -182,7 +182,7 @@ The scoring engine should not care which source produced a job after normalizati
 `src/lib/jobs/getonbrd.ts` fetches the public API categories `programming`,
 `sysadmin-devops-qa`, `technical-support`, `customer-support`, and
 `innovation-agile`, including all pages. Imports are throttled to once per
-hour. Published jobs from the last 60 days with relevant titles are upserted
+hour outside preview QA. Published jobs from the last 60 days with relevant titles are upserted
 in batches; previously stored jobs absent from the completed feed are marked
 inactive without deleting application history. A failed API page aborts before
 that deactivation step.

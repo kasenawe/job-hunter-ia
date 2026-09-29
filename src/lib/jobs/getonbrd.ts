@@ -32,13 +32,13 @@ async function fetchPage(category: string, page: number): Promise<Page> {
   return payload;
 }
 
-export async function importGetOnBrdJobs() {
+export async function importGetOnBrdJobs(options: { force?: boolean } = {}) {
   const supabase = createSupabaseServerClient();
   const { data: latest, error: latestError } = await supabase.from("jobs")
     .select("last_seen_at").eq("source", "getonbrd")
     .order("last_seen_at", { ascending: false }).limit(1).maybeSingle();
   if (latestError) throw new Error(`Could not check Get on Board import interval: ${latestError.message}`);
-  if (latest?.last_seen_at && Date.now() - new Date(latest.last_seen_at).getTime() < MIN_IMPORT_INTERVAL_MS) {
+  if (!options.force && latest?.last_seen_at && Date.now() - new Date(latest.last_seen_at).getTime() < MIN_IMPORT_INTERVAL_MS) {
     return { imported: 0, skipped: true };
   }
 
@@ -60,13 +60,11 @@ export async function importGetOnBrdJobs() {
   }
   const rows = [...unique.values()].map(normalizeGetOnBrdJob)
     .filter((row): row is NonNullable<typeof row> => row !== null);
-  const now = new Date().toISOString();
-
   for (let start = 0; start < rows.length; start += 40) {
     const chunk = rows.slice(start, start + 40);
     const { error } = await supabase.from("jobs").upsert(chunk, { onConflict: "source,source_job_id" });
     if (error) throw new Error(`Could not store Get on Board jobs: ${error.message}`);
-    const { error: seenError } = await supabase.from("jobs").update({ last_seen_at: now })
+    const { error: seenError } = await supabase.from("jobs").update({ last_seen_at: new Date().toISOString() })
       .eq("source", "getonbrd").in("source_job_id", chunk.map((row) => row.source_job_id));
     if (seenError) throw new Error(`Could not update Get on Board last_seen_at: ${seenError.message}`);
   }
