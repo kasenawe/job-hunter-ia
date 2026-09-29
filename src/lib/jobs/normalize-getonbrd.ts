@@ -36,6 +36,7 @@ const names = (items?: RelatedLocation[]) =>
 
 function plain(value?: string) {
   return (value ?? "")
+    .replace(/<\/(?:li|p|div|h[1-6])\s*>/gi, ". ")
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -43,6 +44,7 @@ function plain(value?: string) {
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\.\.\s+/g, ". ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -72,8 +74,11 @@ export function normalizeGetOnBrdJob(job: GetOnBrdJob) {
   const knownRestriction = acceptedLocations.length > 0 && !allowsUruguay;
   const workplaceType = remote ? "remote" : attributes.remote_modality === "hybrid" ? "hybrid" : "on-site";
   const scope = worldwide ? "worldwide" : allowsUruguay && regions.some((name) => /south america|latin america|latam/i.test(name)) ? "latam" : knownRestriction ? "restricted" : null;
-  const description = [attributes.projects, attributes.functions, attributes.description, attributes.desirable]
-    .map(plain).filter(Boolean).join("\n\n") || "Descripción no disponible";
+  const requiredDescription = [attributes.projects, attributes.functions, attributes.description]
+    .map(plain).filter(Boolean).join("\n\n");
+  const desirable = plain(attributes.desirable);
+  const description = [requiredDescription, desirable && `Deseable: ${desirable}`]
+    .filter(Boolean).join("\n\n") || "Descripción no disponible";
   const posted = attributes.published_at && Number.isFinite(attributes.published_at)
     ? new Date(attributes.published_at * 1000).toISOString() : null;
   const seniority = seniorityFromTitle(title) ?? ({ junior: "junior", senior: "senior", "semi-senior": "mid" }[attributes.seniority?.data?.attributes?.locale_key ?? ""] ?? null);
@@ -100,7 +105,7 @@ export function normalizeGetOnBrdJob(job: GetOnBrdJob) {
     salary_interval: attributes.min_salary != null || attributes.max_salary != null ? "month" : null,
     raw_payload: job,
     normalized_payload: {
-      normalization_version: "getonbrd-v1",
+      normalization_version: "getonbrd-v2",
       source_remote_modality: attributes.remote_modality ?? null,
       source_remote_zone: attributes.remote_zone ?? null,
       source_countries: attributes.countries ?? [],

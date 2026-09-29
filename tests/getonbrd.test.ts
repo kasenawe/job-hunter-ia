@@ -61,3 +61,25 @@ test("a local Uruguay hybrid role remains eligible", () => {
   assert.equal(hybrid?.is_active, true);
   assert.match(hybrid?.location_text ?? "", /Montevideo/);
 });
+
+test("the separate desirable field stays marked as optional when normalized and scored", () => {
+  const normalized = normalizeGetOnBrdJob(source({
+    remote_modality: "fully_remote",
+    location_tenants: { data: [] },
+    description: "<p>Experiencia desarrollando con React y TypeScript.</p>",
+    desirable: "<p>Experiencia sólida con Python y AWS.</p>",
+  }));
+  assert.match(normalized?.description_text ?? "", /Deseable: Experiencia sólida/);
+  assert.equal(normalized?.normalized_payload.normalization_version, "getonbrd-v2");
+  assert.equal(scoreJob({ ...normalized, id: "example" } as JobForScoring).score_breakdown.requirements_adjustment.cap, null);
+});
+
+test("separate list items do not turn knowledge-only AWS into required hands-on experience", () => {
+  const normalized = normalizeGetOnBrdJob(source({
+    remote_modality: "fully_remote",
+    location_tenants: { data: [] },
+    description: "<ul><li>Experiencia desarrollando con React.</li><li>Conocimientos en AWS (S3, Lambda).</li></ul>",
+  }));
+  assert.match(normalized?.description_text ?? "", /React\.\s+Conocimientos/);
+  assert.equal(scoreJob({ ...normalized, id: "example" } as JobForScoring).score_breakdown.requirements_adjustment.cap, null);
+});

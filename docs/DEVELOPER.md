@@ -316,7 +316,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.5-2026-09-29`. Changes to scoring
+The current rule identifier is `rules-v1.6-2026-09-29`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -429,6 +429,15 @@ includes multiple product security activities, infrastructure roles with
 multiple mandatory cloud operations tools, explicit `Must Have` AWS experience,
 and ownership of a Terraform provider are capped at 64 and recorded as
 confirmed central gaps. Mentions under `Nice to Have` do not trigger this cap.
+The v1.6 rules also identify explicit professional experience requirements in
+Spanish and English for AWS, Terraform, Kubernetes, Python, Django, FastAPI,
+Go, and NestJS. Confirmed absence of AWS/Terraform/Kubernetes is recorded as
+unmet; other specialist experience is unverified until the candidate confirms
+it. These central requirements cap the recommendation at 64, preserving the
+weighted score and sentence-level evidence. The Get on Board normalizer marks
+its separate `desirable` field with `Deseable:` (`getonbrd-v2`) so optional
+skills are excluded from the central-requirement check. Existing rows require
+reimport before rescoring to gain this distinction.
 
 ### Other requirements
 

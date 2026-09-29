@@ -18,7 +18,7 @@ The MVP currently supports:
 - recommending a CV direction based on the strongest profile axis;
 - opening the original job offer.
 
-Scoring v1.5 is currently in QA and calibration. Confirmed location exclusions
+Scoring v1.6 is currently in QA and calibration. Confirmed location exclusions
 remain visible in a separate audit list and are capped below the
 application-priority threshold. The priority list does not fill empty slots
 with geographically incompatible jobs. New sources still need a manual Top 10

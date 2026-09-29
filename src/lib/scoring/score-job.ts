@@ -241,6 +241,29 @@ function requiredUnverifiedSpecialistSkill(description: string) {
   return null;
 }
 
+function requiredSpecialistSkills(description: string) {
+  // Only inspect the required portion. Get on Board stores its optional skills
+  // after the main description, while other sources use inline bonus headings.
+  const requiredText = description.split(/\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\)|deseables?|ser[aá] un plus|se valora(?:r[aá])?)\s*:/i)[0];
+  const skills = ["AWS", "Terraform", "Kubernetes", "Python", "Django", "FastAPI", "Go", "Golang", "NestJS"];
+  const documented = [...CANDIDATE_PROFILE.strongSkills, ...CANDIDATE_PROFILE.transferableSkills];
+  const sentences = requiredText.split(/(?<=[.!?])\s+|\n+/);
+  const gaps: { skill: string; status: "unmet" | "unverified"; evidence: string }[] = [];
+
+  for (const sentence of sentences) {
+    if (!/(?:experiencia (?:s[oó]lida |pr[aá]ctica |profesional |comprobable )?(?:desarrollando|trabajando|dise[nñ]ando|operando|utilizando|con|en)|hands-on experience|strong (?:proficiency|experience|expertise)|dominio de|proficien(?:t|cy) (?:in|with)|expertise (?:in|with)|required)/i.test(sentence)) continue;
+    for (const skill of skills) {
+      if (!includesTerm(sentence, skill) || documented.some((known) => known.toLowerCase() === skill.toLowerCase()) || gaps.some((gap) => gap.skill === skill)) continue;
+      gaps.push({
+        skill,
+        status: CANDIDATE_PROFILE.confirmedNoExperience.some((known) => known === skill) ? "unmet" : "unverified",
+        evidence: sentence.trim().slice(0, 240),
+      });
+    }
+  }
+  return gaps;
+}
+
 function category(score: number) {
   if (score >= 85) return "match muy fuerte";
   if (score >= 70) return "buen candidato para revisar/postular";
@@ -259,6 +282,7 @@ export function scoreJob(job: JobForScoring) {
   const productSecurity = requiredProductSecurity(job.description_text, job.title);
   const absentTools = requiredConfirmedAbsentTools(job.description_text, job.title);
   const specialistRequirement = requiredUnverifiedSpecialistSkill(job.description_text);
+  const specialistSkills = requiredSpecialistSkills(job.description_text);
   const desirableStart = /\b(?:nice to have|preferred qualifications|bonus\s*\(helpful,? but not required\))/i.exec(job.description_text)?.index;
   const desirableMatches = desirableStart === undefined
     ? []
@@ -342,7 +366,7 @@ export function scoreJob(job: JobForScoring) {
   );
   // Central requirements limit the recommendation category without altering
   // the six weighted components; each adjustment remains auditable.
-  const requirementsCap = (specialistRequirement && specialistRequirement.years >= 3) || advancedPostgres || productSecurity || absentTools
+  const requirementsCap = (specialistRequirement && specialistRequirement.years >= 3) || advancedPostgres || productSecurity || absentTools || specialistSkills.length
     ? 64
     : (developmentYears && developmentYears.years >= 5) || supportYears ? 69 : null;
   const scoreAfterRequirements = requirementsCap === null ? baseScore : Math.min(baseScore, requirementsCap);
@@ -401,6 +425,12 @@ export function scoreJob(job: JobForScoring) {
     gaps.push(`No hay evidencia de ${specialistRequirement.years} años profesionales en ${specialistRequirement.skill}, un requisito explícito.`);
   }
 
+  for (const requirement of specialistSkills) {
+    gaps.push(requirement.status === "unmet"
+      ? `Se requiere experiencia práctica en ${requirement.skill}; el perfil confirma no haber usado esa herramienta.`
+      : `Se requiere experiencia en ${requirement.skill}; no consta experiencia profesional acreditada en el perfil.`);
+  }
+
   if (languageRaw <= 65) {
     gaps.push("La vacante parece exigir un nivel de inglés más alto que el conversacional declarado.");
   }
@@ -421,7 +451,16 @@ export function scoreJob(job: JobForScoring) {
       ? "Infraestructura / soporte"
       : "Desarrollo";
 
-  const requirementAnalysis = [
+  const requirementAnalysis: Array<{
+    area: string;
+    criticality: string;
+    status: string;
+    value?: string | null;
+    raw_score?: number;
+    skill?: string;
+    skills?: string[];
+    [key: string]: unknown;
+  }> = [
     {
       area: "technical",
       criticality: "important",
@@ -488,6 +527,13 @@ export function scoreJob(job: JobForScoring) {
       skill: specialistRequirement.skill,
       years: specialistRequirement.years,
     }] : []),
+    ...specialistSkills.map((requirement) => ({
+      area: "specialist_skill",
+      criticality: "central",
+      status: requirement.status,
+      evidence: requirement.evidence,
+      skill: requirement.skill,
+    })),
     {
       area: "language",
       criticality: "important",
@@ -534,6 +580,7 @@ export function scoreJob(job: JobForScoring) {
           : advancedPostgres ? advancedPostgres.evidence
           : specialistRequirement && specialistRequirement.years >= 3
           ? specialistRequirement.evidence
+          : specialistSkills[0] ? specialistSkills[0].evidence
           : developmentYears && developmentYears.years >= 5 ? developmentYears.evidence
           : supportYears?.evidence ?? null,
       },
@@ -558,7 +605,7 @@ export function scoreJob(job: JobForScoring) {
     risks,
     requirement_analysis: requirementAnalysis,
     recommended_cv: recommendedCv,
-    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${productSecurity ? " Seguridad de producto no acreditada." : ""}${absentTools ? ` Requiere ${absentTools.skills.join("/")} sin experiencia previa.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}`,
+    summary: `${category(totalScore)}. ${location.eligibility === "incompatible" ? `Ubicación incompatible (${location.evidence ?? "alcance restringido"}); ` : ""}Mayor afinidad: ${Object.entries(axisScores).sort((a, b) => b[1] - a[1])[0][0].replaceAll("_", " ")}.${developmentYears && developmentYears.years >= 5 ? ` Requiere ${developmentYears.years} años de desarrollo.` : ""}${supportYears ? ` Requiere ${supportYears.years} años de soporte/áreas afines.` : ""}${advancedPostgres ? " PostgreSQL avanzado sin acreditar." : ""}${productSecurity ? " Seguridad de producto no acreditada." : ""}${absentTools ? ` Requiere ${absentTools.skills.join("/")} sin experiencia previa.` : ""}${specialistRequirement && specialistRequirement.years >= 3 ? ` Acreditar ${specialistRequirement.years} años en ${specialistRequirement.skill}.` : ""}${specialistSkills.length ? ` Requisito central: ${specialistSkills.map(({ skill }) => skill).join(", ")}.` : ""}`,
     scoring_version: SCORING_VERSION,
     matched_at: new Date().toISOString(),
   };

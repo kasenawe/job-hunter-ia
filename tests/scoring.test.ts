@@ -192,3 +192,35 @@ test("a Staff responsibility is not treated as Senior from the feed title", () =
   }));
   assert.ok(match.requirement_analysis.some((item) => item.area === "seniority" && item.value === "staff" && item.raw_score === 25));
 });
+
+test("central Spanish cloud and backend skills are visible despite matching React and Node.js", () => {
+  const match = scoreJob(job({
+    title: "Full-Stack Developer – Foco Back-end (NestJS/Next.JS/AWS)",
+    description_text: "Experiencia sólida desarrollando aplicaciones y servicios Backend con NestJS. Experiencia profesional con Node.js y TypeScript. Experiencia diseñando, desarrollando y operando soluciones sobre AWS. Experiencia profesional con Docker y Kubernetes. Experiencia construyendo integraciones entre sistemas y APIs.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "AWS" && item.status === "unmet"));
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "NestJS" && item.status === "unverified"));
+  assert.ok(match.gaps.some((gap) => gap.includes("Kubernetes")));
+});
+
+test("Python/FastAPI requirements are unverified central skills, not asserted absences", () => {
+  const match = scoreJob(job({
+    title: "Full-Stack Developer – Python / FastAPI / React",
+    description_text: "Experiencia desarrollando con Python. Experiencia sólida con FastAPI. Experiencia en desarrollo frontend con React. Manejo de PostgreSQL y APIs REST.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
+  assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "Python" && item.status === "unverified"));
+  assert.ok(match.gaps.some((gap) => gap.includes("no consta experiencia")));
+});
+
+test("bonus skills in Spanish or English do not trigger a central gap", () => {
+  const match = scoreJob(job({
+    description_text: "Implementar APIs con React y TypeScript. Deseable: Experiencia sólida con Python y AWS.",
+  }));
+  const english = scoreJob(job({
+    description_text: "Build React integrations. Nice to Have: Hands-on experience with AWS and Go.",
+  }));
+  assert.equal(match.score_breakdown.requirements_adjustment.cap, null);
+  assert.equal(english.score_breakdown.requirements_adjustment.cap, null);
+});
