@@ -27,8 +27,18 @@ test("English support draft uses support experience without inventing company fa
   const drafts = generateApplicationDrafts(job, "en");
   assert.equal(preferredDraftLanguage(job), "en");
   assert.match(drafts.coverLetter, /application support, infrastructure, incident coordination/);
-  assert.match(drafts.whyCompany, /resolving incidents and supporting systems and users/);
+  assert.match(drafts.whyCompany, /resolve incidents and support systems and users/);
   assert.doesNotMatch(drafts.coverLetter, /Kubernetes|mission|culture/);
+});
+
+test("frontend role focuses on interfaces even when the description mentions APIs", () => {
+  const drafts = generateApplicationDrafts({
+    title: "Web Frontend Engineer",
+    company_name: "Example Co",
+    description_text: "Build React interfaces and work with TypeScript and APIs.",
+  }, "en");
+  assert.match(drafts.coverLetter, /opportunity to build web interfaces/);
+  assert.doesNotMatch(drafts.whyCompany, /end-to-end/);
 });
 
 test("thin job descriptions produce a restrained motivation", () => {

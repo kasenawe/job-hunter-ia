@@ -51,27 +51,33 @@ function joinList(items: string[], language: DraftLanguage) {
 function workFocus(job: JobForDraft, language: DraftLanguage) {
   const text = `${job.title} ${job.description_text}`;
   if (/\bcrm\b/i.test(text)) {
-    return language === "es" ? "desarrollar e integrar soluciones CRM" : "developing and integrating CRM solutions";
+    return language === "es" ? "desarrollar e integrar soluciones CRM" : "develop and integrate CRM solutions";
   }
   if (/support|soporte|incident|incidenc|troubleshoot/i.test(text) && roleFamily(job.title) === "support") {
-    return language === "es" ? "resolver incidencias y dar soporte a sistemas y usuarios" : "resolving incidents and supporting systems and users";
+    return language === "es" ? "resolver incidencias y dar soporte a sistemas y usuarios" : "resolve incidents and support systems and users";
   }
   if (roleFamily(job.title) === "integrations") {
-    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrating systems and improving processes";
+    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrate systems and improve processes";
   }
-  if (/full.?stack|frontend|front-end|backend|back-end/i.test(job.title)) {
-    return language === "es" ? "desarrollar aplicaciones web de extremo a extremo" : "building end-to-end web applications";
+  if (/full.?stack/i.test(job.title)) {
+    return language === "es" ? "desarrollar aplicaciones web de extremo a extremo" : "build end-to-end web applications";
+  }
+  if (/frontend|front-end/i.test(job.title)) {
+    return language === "es" ? "desarrollar interfaces web" : "build web interfaces";
+  }
+  if (/backend|back-end/i.test(job.title)) {
+    return language === "es" ? "desarrollar servicios y APIs" : "build services and APIs";
   }
   if (/integrat(?:ion|ions|e)|integraci[oó]n|integraciones/i.test(text)) {
-    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrating systems and improving processes";
+    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrate systems and improve processes";
   }
   if (/\b(?:rest(?:ful)?\s+)?apis?\b/i.test(text)) {
-    return language === "es" ? "desarrollar aplicaciones e integrar APIs" : "building applications and integrating APIs";
+    return language === "es" ? "desarrollar aplicaciones e integrar APIs" : "build applications and integrate APIs";
   }
   if (/frontend|front-end|backend|back-end|full.?stack/i.test(text)) {
-    return language === "es" ? "desarrollar aplicaciones web de extremo a extremo" : "building end-to-end web applications";
+    return language === "es" ? "desarrollar aplicaciones web" : "build web applications";
   }
-  return language === "es" ? "aportar al trabajo técnico descrito en la vacante" : "contributing to the technical work described in the role";
+  return language === "es" ? "aportar al trabajo técnico descrito en la vacante" : "contribute to the technical work described in the role";
 }
 
 export function preferredDraftLanguage(job: JobForDraft): DraftLanguage {
@@ -100,8 +106,8 @@ export function generateApplicationDrafts(job: JobForDraft, language: DraftLangu
         ? "My experience combines systems integration, technical and functional analysis, application development, and support for users and processes."
         : "My experience combines web application development with systems integration, technical support, and incident resolution.";
     return {
-      coverLetter: `Dear ${job.company_name} team,\n\nI am interested in the ${job.title} role. The opportunity to work on ${focus} connects with the kind of work I have done and would like to continue developing.\n\n${background} ${stack} I value understanding the problem, communicating clearly with the people involved, and delivering practical solutions.\n\nI would welcome the opportunity to discuss how my background could contribute to this role. Thank you for considering my application.\n\nBest regards,\nMaximiliano Quintana`,
-      whyCompany: `I am interested in joining ${job.company_name} because this role offers the opportunity to work on ${focus}. ${technologies.length > 0 ? `The use of ${joinList(technologies.slice(0, 3), language)} aligns with my experience, and I would like to contribute while continuing to grow in this area.` : "It aligns with my technical background, and I would like to contribute while continuing to grow in this area."}`,
+      coverLetter: `Dear ${job.company_name} team,\n\nI am interested in the ${job.title} role. The opportunity to ${focus} connects with the kind of work I have done and would like to continue developing.\n\n${background} ${stack} I value understanding the problem, communicating clearly with the people involved, and delivering practical solutions.\n\nI would welcome the opportunity to discuss how my background could contribute to this role. Thank you for considering my application.\n\nBest regards,\nMaximiliano Quintana`,
+      whyCompany: `I am interested in joining ${job.company_name} because this role offers the opportunity to ${focus}. ${technologies.length > 0 ? `The use of ${joinList(technologies.slice(0, 3), language)} aligns with my experience, and I would like to contribute while continuing to grow in this area.` : "It aligns with my technical background, and I would like to contribute while continuing to grow in this area."}`,
     };
   }
 
