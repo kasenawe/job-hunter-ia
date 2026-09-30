@@ -4,6 +4,7 @@ import {
   importJobicyJobsAction,
   reprocessStoredJobicyJobsAction,
 } from "@/app/actions/import-jobicy";
+import { importGetOnBrdJobsAction } from "@/app/actions/import-getonbrd";
 import { scoreActiveJobsAction } from "@/app/actions/score-jobs";
 import { SubmitButton } from "@/components/submit-button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,8 +19,19 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function eligibilityStatus(breakdown: unknown) {
+  if (!breakdown || typeof breakdown !== "object") return "unclassified";
+  const adjustment = (breakdown as Record<string, unknown>).eligibility_adjustment;
+  if (!adjustment || typeof adjustment !== "object") return "unclassified";
+  const status = (adjustment as Record<string, unknown>).status;
+  return status === "eligible" || status === "uncertain" || status === "incompatible"
+    ? status
+    : "unclassified";
+}
+
 export default async function Home() {
   await connection();
+  const allowManualOperations = process.env.VERCEL_ENV !== "production";
 
   const supabase = createSupabaseServerClient();
 
@@ -47,11 +59,11 @@ export default async function Home() {
     supabase
       .from("job_matches")
       .select(
-        "job_id,total_score,recommended_cv,summary,matched_at,job:jobs!inner(id,title,company_name,location_text,seniority,source_url,is_active)",
+        "job_id,total_score,score_breakdown,recommended_cv,summary,matched_at,job:jobs!inner(id,title,company_name,location_text,seniority,source_url,is_active)",
       )
       .eq("job.is_active", true)
       .order("total_score", { ascending: false })
-      .limit(20),
+      .limit(1000),
     supabase
       .from("jobs")
       .select(
@@ -76,6 +88,14 @@ export default async function Home() {
   if (scoredError) console.error("Supabase scored count failed:", scoredError.message);
   if (matchesError) console.error("Supabase ranking query failed:", matchesError.message);
   if (jobsError) console.error("Supabase QA jobs query failed:", jobsError.message);
+
+  const matches = rankedMatches ?? [];
+  const priorityMatches = matches.filter(
+    (match) => eligibilityStatus(match.score_breakdown) !== "incompatible",
+  );
+  const incompatibleMatches = matches.filter(
+    (match) => eligibilityStatus(match.score_breakdown) === "incompatible",
+  );
 
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-10 text-zinc-100 sm:px-6 sm:py-16">
@@ -132,14 +152,15 @@ export default async function Home() {
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-400">Fuente inicial</p>
-          <h2 className="mt-1 text-xl font-medium">Jobicy</h2>
+          <p className="text-sm text-zinc-400">Fuentes automáticas</p>
+          <h2 className="mt-1 text-xl font-medium">Jobicy y Get on Board</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            Importa ofertas remotas orientadas a desarrollo, soporte,
-            integraciones, implementación y análisis técnico.
+            Importa hasta 200 ofertas remotas del filtro LATAM de Jobicy,
+            incluidas las vacantes globales que ese filtro devuelve, y conserva
+            las relacionadas con desarrollo, soporte e integraciones.
           </p>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          {allowManualOperations ? <div className="mt-5 flex flex-wrap gap-3">
             <form action={importJobicyJobsAction}>
               <SubmitButton pendingLabel="Importando...">
                 Importar ofertas de Jobicy
@@ -151,7 +172,16 @@ export default async function Home() {
                 Reprocesar ofertas guardadas
               </SubmitButton>
             </form>
-          </div>
+          </div> : <p className="mt-5 text-sm text-zinc-400">Las fuentes se actualizan automáticamente cada día.</p>}
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-400">
+            Get on Board busca desarrollo, soporte, infraestructura e integraciones.
+            Verifica las regiones permitidas antes de incluir una oferta en el ranking.
+          </p>
+          {allowManualOperations && <form action={importGetOnBrdJobsAction} className="mt-4">
+            <SubmitButton pendingLabel="Buscando y puntuando..." variant="secondary">
+              Buscar ofertas en Get on Board
+            </SubmitButton>
+          </form>}
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900">
@@ -165,11 +195,20 @@ export default async function Home() {
               </p>
             </div>
 
-            <form action={scoreActiveJobsAction}>
+            {allowManualOperations && <form action={scoreActiveJobsAction}>
               <SubmitButton pendingLabel="Calculando...">
                 Calcular scoring v1
               </SubmitButton>
-            </form>
+            </form>}
+          </div>
+
+          <div className="border-b border-zinc-800 px-6 py-4 text-sm text-zinc-400">
+            {priorityMatches.length} ofertas para revisar ({priorityMatches.filter((match) => eligibilityStatus(match.score_breakdown) === "uncertain").length} con ubicación por confirmar); {incompatibleMatches.length} incompatibles por ubicación.
+            {priorityMatches.length > 0 && priorityMatches.length < 10 && (
+              <span className="mt-1 block text-amber-300">
+                La fuente actual aporta menos de 10 ofertas priorizables. No se completa el Top 10 con ubicaciones incompatibles.
+              </span>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -187,7 +226,7 @@ export default async function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {(rankedMatches ?? []).map((match) => {
+                {priorityMatches.slice(0, 10).map((match) => {
                   const jobRelation = match.job;
                   const job = Array.isArray(jobRelation)
                     ? jobRelation[0]
@@ -236,16 +275,40 @@ export default async function Home() {
                   );
                 })}
 
-                {(rankedMatches ?? []).length === 0 && (
+                {priorityMatches.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-zinc-500">
-                      Todavía no hay ofertas puntuadas.
+                      {matches.length === 0
+                        ? "Todavía no hay ofertas puntuadas."
+                        : "No hay ofertas con ubicación compatible o por confirmar en este lote."}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          {incompatibleMatches.length > 0 && (
+            <details className="border-t border-zinc-800 p-6">
+              <summary className="cursor-pointer text-sm font-medium text-zinc-300">
+                Ver {incompatibleMatches.length} ofertas con ubicación incompatible
+              </summary>
+              <ul className="mt-4 space-y-3 text-sm text-zinc-400">
+                {incompatibleMatches.map((match) => {
+                  const job = Array.isArray(match.job) ? match.job[0] : match.job;
+                  if (!job) return null;
+                  return (
+                    <li key={match.job_id}>
+                      <a href={job.source_url} target="_blank" rel="noreferrer" className="text-zinc-200 underline decoration-zinc-600 underline-offset-4 hover:text-white">
+                        {job.title} · {job.company_name}
+                      </a>{" "}
+                      — {job.location_text ?? "ubicación sin detallar"} · {match.total_score} puntos
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          )}
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900">

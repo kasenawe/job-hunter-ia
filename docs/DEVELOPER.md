@@ -177,6 +177,30 @@ matching/scoring
 
 The scoring engine should not care which source produced a job after normalization.
 
+### Get on Board
+
+`src/lib/jobs/getonbrd.ts` fetches the public API categories `programming`,
+`sysadmin-devops-qa`, `technical-support`, `customer-support`, and
+`innovation-agile`, including all pages. Imports are throttled to once per
+hour outside preview QA. Published jobs from the last 60 days with relevant titles are upserted
+in batches; previously stored jobs absent from the completed feed are marked
+inactive without deleting application history. A failed API page aborts before
+that deactivation step.
+
+`src/lib/jobs/normalize-getonbrd.ts` expands company and allowed location
+relations. Fully remote roles are eligible worldwide; locally remote roles
+are active only when the allowed countries or regions include Uruguay or
+South America. Uruguay on-site or hybrid roles are eligible. Ambiguous and
+incompatible locations are preserved as inactive rows for audit. Raw source
+data and the geographic decision are stored with normalization version
+`getonbrd-v1`.
+
+The home-page action imports and rescores active rows. Production's
+`/api/cron/import-jobs` route imports both Jobicy and Get on Board daily at
+12:00 UTC, then scores active jobs. It returns 401 unless the Authorization
+header matches `Bearer ${CRON_SECRET}`. Preview deployments do not run the
+Vercel schedule. Set `CRON_SECRET` before deploying the cron to production.
+
 ## 7. Jobicy integration
 
 Current source implementation:
@@ -194,7 +218,7 @@ Jobicy jobs are fetched from its remote-jobs API.
 
 Current behavior:
 
-- requests up to 200 jobs;
+- requests up to 200 jobs with Jobicy's `geo=latam` filter (which also returns worldwide listings);
 - prevents repeated external imports within one hour;
 - prefilters obviously irrelevant roles;
 - normalizes accepted rows;
@@ -292,6 +316,9 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
+The current rule identifier is `rules-v1.8-2026-09-29`. Changes to scoring
+behavior require a new identifier before rescoring persisted matches.
+
 ### Scoring weights
 
 Current weights:
@@ -312,7 +339,9 @@ The current rules detect unique occurrences of:
 - strong/direct candidate skills;
 - transferable candidate skills.
 
-Direct matches contribute more than transferable matches.
+Direct matches contribute more than transferable matches. Term matching uses
+word boundaries and collapses known aliases (`node`/`node.js`, `api`/`apis`,
+`postgres`/`postgresql`) to avoid inflating a score through overlapping words.
 
 The raw technical score is capped at 100 before applying the 35% weight.
 
@@ -320,7 +349,9 @@ The raw technical score is capped at 100 before applying the 35% weight.
 
 Each of the four profile axes is evaluated from title and description terms.
 
-Title matches receive more weight than body-only matches.
+Title matches receive more weight than body-only matches. Body-only evidence is
+capped at four distinct terms per axis so long descriptions do not automatically
+produce a perfect functional score.
 
 The strongest axis contributes to the experience/functions score.
 
@@ -336,7 +367,18 @@ The current heuristic treats:
 - Lead / Manager as larger gaps;
 - Staff / Principal / Director as progressively weaker fits.
 
-Seniority is a scoring factor, not a hard filter.
+Seniority is a scoring factor, not a hard filter. An explicit level in the title
+overrides a generic source label, including `Staff` roles marked `Senior` by
+Jobicy. An explicit requirement of at least five years of professional
+development also reduces this component and is recorded as a gap. It limits
+the final score to 69 so a two-year development profile is not labelled a
+very strong match solely through keyword overlap.
+For support, database, and infrastructure roles, an explicit requirement above
+the candidate's confirmed 3–6 years of support/infra experience also reduces
+seniority and caps the final score at 69. This resolves conflicts between a
+source's `Junior` label and the actual tenure requested in the description.
+An explicit `Staff Engineer` responsibility in the posting also overrides a
+`Senior` title/label when it describes the role itself.
 
 ### Language score
 
@@ -358,11 +400,56 @@ Current logic strongly prefers:
 - LATAM;
 - Americas.
 
-Restricted roles in regions such as Europe, UK, APAC, Asia, or Australia receive a large penalty.
+Restricted roles in regions such as Europe, UK, APAC, Asia, or Australia receive
+a large penalty.
 
 US/Canada-only roles also receive a meaningful penalty.
 
-Location incompatibility does not delete a job; it lowers competitiveness.
+When the location or an explicit work-authorization requirement confirms that
+Uruguay is ineligible, the final score is capped at 54. This places the job in
+low priority without deleting it. Unknown geography is marked for manual review
+and does not receive that cap. The stored breakdown contains the weighted base
+score, eligibility status, cap, points removed, and evidence, so the final
+score can be reconstructed. This adjustment is outside the six additive weights
+because a confirmed exclusion is more consequential than a weak location fit.
+
+An explicit `(Required)` multi-year requirement for a specialist language or
+platform absent from the documented profile limits the score to 64. This is
+recorded as unverified rather than asserting that the candidate lacks the
+skill. Both requirement and location caps are recorded separately in
+`score_breakdown`, including each adjustment's removed points.
+An explicit requirement for advanced PostgreSQL internals (multiple examples
+such as autovacuum, WAL, and bloat) limits the score to 64. The documented
+candidate experience is SQL/RLS; operational internals are unverified. This
+requirement is recorded separately from keyword matches and does not penalize
+ordinary SQL/RLS support roles.
+The candidate confirmed no hands-on AWS, Terraform, or Kubernetes use and no
+product security experience. Security engineering roles whose primary function
+includes multiple product security activities, infrastructure roles with
+multiple mandatory cloud operations tools, explicit `Must Have` AWS experience,
+and ownership of a Terraform provider are capped at 64 and recorded as
+confirmed central gaps. Mentions under `Nice to Have` do not trigger this cap.
+The v1.6 rules also identify explicit professional experience requirements in
+Spanish and English for AWS, Terraform, Kubernetes, Python, Django, FastAPI,
+Go, and NestJS. Confirmed absence of AWS/Terraform/Kubernetes is recorded as
+unmet; other specialist experience is unverified until the candidate confirms
+it. These central requirements cap the recommendation at 64, preserving the
+weighted score and sentence-level evidence. The Get on Board normalizer marks
+its separate `desirable` field with `Deseable:` (`getonbrd-v2`) so optional
+skills are excluded from the central-requirement check. Existing rows require
+reimport before rescoring to gain this distinction.
+The v1.7 calibration covers explicit multi-year AWS operation and LLM
+integrations in production, additional specialist backend stacks, and
+four-year development requirements. Professional or fluent English is a
+central gap relative to the declared conversational level and caps a
+recommendation at 69 unless another central skill imposes 64. A Senior
+development title without a stricter cap cannot be labeled a very strong match
+(cap 84).
+The v1.8 follow-up treats Ruby on Rails in a role title as a central unverified
+skill even when the source puts it in `desirable`, recognizes explicit custom
+WordPress development and AWS operations, and reads a `5–10 years` range from
+its minimum. Get on Board may place core qualifications in its `desirable`
+field, so this field still needs manual QA for conflicting source data.
 
 ### Other requirements
 
@@ -371,7 +458,13 @@ The current implementation considers:
 - employment type;
 - basic detected years-of-experience requirements.
 
-High explicit years requirements reduce this component and may be recorded as a risk.
+Years of professional development are considered under seniority. The other
+component now reflects employment type only.
+
+`requirement_analysis` records each component's criticality and status, with
+geography treated as central and explicit bonus qualifications marked desirable.
+It is a conservative first pass, not a complete parser of every sentence in an
+offer. Missing desired qualifications are not treated as exclusions.
 
 ### Score persistence
 
@@ -401,9 +494,11 @@ It currently exposes development/MVP controls and QA information:
 - inactive jobs;
 - active jobs with score;
 - Jobicy import action;
+- Get on Board import and scoring action;
 - safe reprocessing action;
 - scoring v1 action;
-- ranking table;
+- a Top 10 priority table for eligible or geographically uncertain matches;
+- an expandable audit list for location-incompatible matches;
 - normalization QA table.
 
 This is not the final product UI.
@@ -416,10 +511,14 @@ Current server actions include:
 
 ```text
 src/app/actions/import-jobicy.ts
+src/app/actions/import-getonbrd.ts
 src/app/actions/score-jobs.ts
 ```
 
-Server Actions are used as the browser-to-server boundary for current MVP commands.
+Server Actions are used as the browser-to-server boundary for QA commands.
+They reject calls when `VERCEL_ENV=production`, even if someone invokes an
+action directly. The production home page omits these buttons and displays the
+read-only ranking. The scheduled route is the only production ingestion path.
 
 After mutations they revalidate the home route so the latest database state becomes visible.
 
@@ -445,6 +544,10 @@ The acceptance process requires:
 
 Do not mark scoring v1 complete until these acceptance checks pass.
 
+Regression tests for geography, seniority, hybrid roles, and desirable
+requirements run with `npm run test:scoring`. Runtime QA still requires
+rescoring the stored active jobs and checking the new Top 10 manually.
+
 ## 12. Adding a new job source
 
 A new source should normally follow this pattern:
@@ -463,11 +566,12 @@ Prefer simple parallel adapters first.
 
 ## 13. Planned source strategy
 
-Current implemented source:
+Current implemented sources:
 
 - Jobicy.
+- Get on Board.
 
-Next likely source:
+Another source to assess by marginal eligible jobs:
 
 - Remote OK.
 

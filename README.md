@@ -8,7 +8,8 @@ The project is intentionally focused on one outcome: **improving the quality and
 
 The MVP currently supports:
 
-- importing remote jobs from Jobicy;
+- importing remote jobs from Jobicy's LATAM feed, including its worldwide listings;
+- importing Get on Board jobs in five technical categories with verified Uruguay eligibility;
 - normalizing source-specific job data into a common internal model;
 - preserving raw source payloads for auditability;
 - filtering obvious non-relevant jobs without deleting historical records;
@@ -17,7 +18,11 @@ The MVP currently supports:
 - recommending a CV direction based on the strongest profile axis;
 - opening the original job offer.
 
-Scoring v1 is currently in QA and calibration.
+Scoring v1.8 is currently in QA and calibration. Confirmed location exclusions
+remain visible in a separate audit list and are capped below the
+application-priority threshold. The priority list does not fill empty slots
+with geographically incompatible jobs. New sources still need a manual Top 10
+review before the ranking can be approved for applications.
 
 Planned MVP work includes:
 
@@ -75,6 +80,7 @@ Create a local `.env.local` file with:
 ```bash
 SUPABASE_URL=
 SUPABASE_SECRET_KEY=
+CRON_SECRET=
 ```
 
 Never commit real secret values.
@@ -97,6 +103,18 @@ Run lint:
 
 ```bash
 npm run lint
+```
+
+Run scoring regression tests:
+
+```bash
+npm run test:scoring
+```
+
+Run source normalization tests:
+
+```bash
+npm run test:sources
 ```
 
 Build:
@@ -127,6 +145,7 @@ RLS is enabled and public browser roles do not have direct access to these table
 ### Implemented
 
 - Jobicy
+- Get on Board (public API; daily scheduled import on production and a manual QA button)
 
 ### Planned / evaluated
 
@@ -138,6 +157,11 @@ RLS is enabled and public browser roles do not have direct access to these table
 - LinkedIn through manual or semi-assisted import rather than account automation
 
 The internal matching system is source-agnostic after normalization.
+
+The scheduled import runs at 12:00 UTC daily. Set `CRON_SECRET` in Vercel before
+enabling the production schedule; Vercel sends it as a Bearer token to the
+protected route. Manual import and scoring actions are available only outside
+production for QA; the production site presents the read-only ranking.
 
 ## Development methodology
 
