@@ -16,6 +16,7 @@ The MVP currently supports:
 - deterministic and explainable scoring against the candidate profile;
 - ranking active jobs by match score;
 - recommending a CV direction based on the strongest profile axis;
+- opening a job detail with editable Spanish/English cover letter and company-interest drafts, generated from the listing and confirmed experience;
 - opening the original job offer.
 
 Scoring v1.8 is currently in QA and calibration. Confirmed location exclusions
@@ -27,9 +28,8 @@ review before the ranking can be approved for applications.
 Planned MVP work includes:
 
 - detailed match explanations;
-- job detail view;
 - application status tracking;
-- cover letter generation;
+- optional model-assisted writing beyond the initial rule-based drafts;
 - additional job sources;
 - semi-assisted manual imports for sources such as LinkedIn.
 

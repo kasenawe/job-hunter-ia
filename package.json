@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:scoring": "node --import tsx --conditions=react-server --test tests/scoring.test.ts",
-    "test:sources": "node --import tsx --conditions=react-server --test tests/getonbrd.test.ts"
+    "test:sources": "node --import tsx --conditions=react-server --test tests/getonbrd.test.ts",
+    "test:drafts": "node --import tsx --test tests/application-drafts.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

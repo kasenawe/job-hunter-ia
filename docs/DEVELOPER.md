@@ -520,6 +520,13 @@ They reject calls when `VERCEL_ENV=production`, even if someone invokes an
 action directly. The production home page omits these buttons and displays the
 read-only ranking. The scheduled route is the only production ingestion path.
 
+The read-only `/jobs/[id]` detail route loads one active job and its latest
+match server-side. `src/lib/applications/drafts.ts` builds Spanish and English
+application drafts from the job description and a small allowlist of confirmed
+candidate skills. The client editor retains edits per language and copies text
+to the clipboard. Drafts are not persisted or submitted. Company motivation
+refers to the advertised work, without inferring company mission or culture.
+
 After mutations they revalidate the home route so the latest database state becomes visible.
 
 Buttons use a small client component based on `useFormStatus` to show:
