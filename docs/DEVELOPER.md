@@ -515,7 +515,10 @@ src/app/actions/import-getonbrd.ts
 src/app/actions/score-jobs.ts
 ```
 
-Server Actions are used as the browser-to-server boundary for current MVP commands.
+Server Actions are used as the browser-to-server boundary for QA commands.
+They reject calls when `VERCEL_ENV=production`, even if someone invokes an
+action directly. The production home page omits these buttons and displays the
+read-only ranking. The scheduled route is the only production ingestion path.
 
 After mutations they revalidate the home route so the latest database state becomes visible.
 

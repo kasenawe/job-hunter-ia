@@ -160,7 +160,8 @@ The internal matching system is source-agnostic after normalization.
 
 The scheduled import runs at 12:00 UTC daily. Set `CRON_SECRET` in Vercel before
 enabling the production schedule; Vercel sends it as a Bearer token to the
-protected route. The preview button can be used for QA without the schedule.
+protected route. Manual import and scoring actions are available only outside
+production for QA; the production site presents the read-only ranking.
 
 ## Development methodology
 
