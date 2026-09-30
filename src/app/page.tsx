@@ -32,7 +32,6 @@ function eligibilityStatus(breakdown: unknown) {
 
 export default async function Home() {
   await connection();
-  const allowManualOperations = process.env.VERCEL_ENV !== "production";
 
   const supabase = createSupabaseServerClient();
 
@@ -161,7 +160,7 @@ export default async function Home() {
             las relacionadas con desarrollo, soporte e integraciones.
           </p>
 
-          {allowManualOperations ? <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-5 flex flex-wrap gap-3">
             <form action={importJobicyJobsAction}>
               <SubmitButton pendingLabel="Importando...">
                 Importar ofertas de Jobicy
@@ -173,16 +172,17 @@ export default async function Home() {
                 Reprocesar ofertas guardadas
               </SubmitButton>
             </form>
-          </div> : <p className="mt-5 text-sm text-zinc-400">Las fuentes se actualizan automáticamente cada día.</p>}
+          </div>
+          <p className="mt-4 text-sm text-zinc-400">Las fuentes se actualizan automáticamente cada día.</p>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-400">
             Get on Board busca desarrollo, soporte, infraestructura e integraciones.
             Verifica las regiones permitidas antes de incluir una oferta en el ranking.
           </p>
-          {allowManualOperations && <form action={importGetOnBrdJobsAction} className="mt-4">
+          <form action={importGetOnBrdJobsAction} className="mt-4">
             <SubmitButton pendingLabel="Buscando y puntuando..." variant="secondary">
               Buscar ofertas en Get on Board
             </SubmitButton>
-          </form>}
+          </form>
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900">
@@ -196,11 +196,11 @@ export default async function Home() {
               </p>
             </div>
 
-            {allowManualOperations && <form action={scoreActiveJobsAction}>
+            <form action={scoreActiveJobsAction}>
               <SubmitButton pendingLabel="Calculando...">
                 Calcular scoring v1
               </SubmitButton>
-            </form>}
+            </form>
           </div>
 
           <div className="border-b border-zinc-800 px-6 py-4 text-sm text-zinc-400">

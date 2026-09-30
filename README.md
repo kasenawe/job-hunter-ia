@@ -145,7 +145,7 @@ RLS is enabled and public browser roles do not have direct access to these table
 ### Implemented
 
 - Jobicy
-- Get on Board (public API; daily scheduled import on production and a manual QA button)
+- Get on Board (public API; daily scheduled and manual import)
 
 ### Planned / evaluated
 
@@ -160,8 +160,10 @@ The internal matching system is source-agnostic after normalization.
 
 The scheduled import runs at 12:00 UTC daily. Set `CRON_SECRET` in Vercel before
 enabling the production schedule; Vercel sends it as a Bearer token to the
-protected route. Manual import and scoring actions are available only outside
-production for QA; the production site presents the read-only ranking.
+protected route. Manual Jobicy and Get on Board imports, safe reprocessing,
+and rescoring are also available on the public production page. These server
+actions require no user login; anyone with the URL can trigger them. The Jobicy
+and Get on Board imports are normally throttled to once per hour.
 
 ## Development methodology
 
