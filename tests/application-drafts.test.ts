@@ -14,7 +14,7 @@ test("Spanish full-stack draft ties interest to the actual role and confirmed sk
   assert.equal(preferredDraftLanguage(job), "es");
   assert.match(drafts.coverLetter, /BC Tecnología/);
   assert.match(drafts.coverLetter, /React.*TypeScript.*Node\.js/);
-  assert.match(drafts.whyCompany, /desarrollar aplicaciones e integrar APIs/);
+  assert.match(drafts.whyCompany, /desarrollar aplicaciones web de extremo a extremo/);
   assert.doesNotMatch(drafts.coverLetter, /trabajado con AWS|experiencia en AWS/i);
 });
 

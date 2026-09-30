@@ -53,11 +53,17 @@ function workFocus(job: JobForDraft, language: DraftLanguage) {
   if (/\bcrm\b/i.test(text)) {
     return language === "es" ? "desarrollar e integrar soluciones CRM" : "developing and integrating CRM solutions";
   }
-  if (roleFamily(job.title) === "integrations" || /integrat(?:ion|ions|e)|integraci[oó]n|integraciones/i.test(text)) {
-    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrating systems and improving processes";
-  }
   if (/support|soporte|incident|incidenc|troubleshoot/i.test(text) && roleFamily(job.title) === "support") {
     return language === "es" ? "resolver incidencias y dar soporte a sistemas y usuarios" : "resolving incidents and supporting systems and users";
+  }
+  if (roleFamily(job.title) === "integrations") {
+    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrating systems and improving processes";
+  }
+  if (/full.?stack|frontend|front-end|backend|back-end/i.test(job.title)) {
+    return language === "es" ? "desarrollar aplicaciones web de extremo a extremo" : "building end-to-end web applications";
+  }
+  if (/integrat(?:ion|ions|e)|integraci[oó]n|integraciones/i.test(text)) {
+    return language === "es" ? "integrar sistemas y mejorar procesos" : "integrating systems and improving processes";
   }
   if (/\b(?:rest(?:ful)?\s+)?apis?\b/i.test(text)) {
     return language === "es" ? "desarrollar aplicaciones e integrar APIs" : "building applications and integrating APIs";
