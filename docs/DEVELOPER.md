@@ -24,7 +24,9 @@ The browser does not connect directly to privileged Supabase operations.
 
 The MVP currently has no application-level user authentication subsystem.
 
-Deployment protection is handled outside the application while the MVP remains personal and single-user.
+The production domain is publicly accessible. Manual import, safe reprocessing,
+and scoring actions have no application authentication; anyone who can open the
+site can trigger them. This is an explicit single-user MVP decision.
 
 ## 2. Main technologies
 
@@ -515,10 +517,12 @@ src/app/actions/import-getonbrd.ts
 src/app/actions/score-jobs.ts
 ```
 
-Server Actions are used as the browser-to-server boundary for QA commands.
-They reject calls when `VERCEL_ENV=production`, even if someone invokes an
-action directly. The production home page omits these buttons and displays the
-read-only ranking. The scheduled route is the only production ingestion path.
+Server Actions are used as the browser-to-server boundary for manual imports,
+safe reprocessing, and scoring in preview and production. They are publicly
+callable on the production domain with no application login. Jobicy and Get on
+Board imports are normally throttled to once per hour; a preview Get on Board
+import forces refresh for QA. The daily scheduled route remains active and
+requires `CRON_SECRET` independently of these actions.
 
 The read-only `/jobs/[id]` detail route loads one active job and its latest
 match server-side. `src/lib/applications/drafts.ts` builds Spanish and English
