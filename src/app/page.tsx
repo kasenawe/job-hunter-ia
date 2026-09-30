@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import Link from "next/link";
 
 import {
   importJobicyJobsAction,
@@ -244,7 +245,8 @@ export default async function Home() {
                         </span>
                       </td>
                       <td className="min-w-64 px-4 py-4 font-medium text-zinc-100">
-                        {job.title}
+                        <Link href={`/jobs/${job.id}`} className="hover:underline">{job.title}</Link>
+                        <Link href={`/jobs/${job.id}`} className="mt-2 block text-xs font-normal text-sky-300 underline underline-offset-4 hover:text-sky-200">Preparar postulación</Link>
                       </td>
                       <td className="min-w-40 px-4 py-4 text-zinc-300">
                         {job.company_name}
