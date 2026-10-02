@@ -44,7 +44,7 @@ Matching considers four profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-Hybrid roles can be more relevant than pure development roles when they make better use of the candidate's combined experience.
+Hybrid roles can be more relevant than pure development roles when they make better use of the candidate's combined experience. Professional development employment at Cerezo Software ran from September 2023 through June 2026 (almost three years).
 
 ## Stack
 

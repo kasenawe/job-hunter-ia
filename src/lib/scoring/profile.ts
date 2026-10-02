@@ -1,4 +1,4 @@
-export const SCORING_VERSION = "rules-v1.8-2026-09-29";
+export const SCORING_VERSION = "rules-v1.9-2026-10-02";
 
 export const SCORING_WEIGHTS = {
   technical: 35,
@@ -10,6 +10,12 @@ export const SCORING_WEIGHTS = {
 } as const;
 
 export const CANDIDATE_PROFILE = {
+  developmentExperience: {
+    employer: "Cerezo Software",
+    from: "2023-09",
+    to: "2026-06",
+    description: "casi 3 años",
+  },
   // Confirmed range; use the upper bound only to identify explicit requirements above it.
   supportExperienceMaxYears: 6,
   postgresExperience: "SQL/RLS; advanced database internals unverified",
