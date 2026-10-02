@@ -101,14 +101,14 @@ test("professional or strong written and spoken English is not treated as unspec
   assert.ok(professional.gaps.some((gap) => gap.includes("inglés más alto")));
 });
 
-test("five years of PHP software engineering cannot be a very strong match with two years of development", () => {
+test("five years of PHP software engineering remains a gap with almost three years of development", () => {
   const match = scoreJob(job({
     title: "Senior Software Engineer",
     description_text: "Build PHP, React and SQL web applications. 5+ years of PHP web application software engineering experience required.",
   }));
   assert.equal(match.score_breakdown.requirements_adjustment.cap, 69);
   assert.ok(match.total_score <= 69);
-  assert.ok(match.gaps.some((gap) => gap.includes("5 años de desarrollo")));
+  assert.ok(match.gaps.some((gap) => gap.includes("5 años de desarrollo") && gap.includes("casi 3 años")));
 });
 
 test("explicit multi-year Go requirement is recorded as central and limits a broad keyword match", () => {
@@ -258,6 +258,7 @@ test("explicit four-year full-stack tenure and C#/.NET requirements constrain se
 test("a senior developer title alone cannot be a very strong recommendation", () => {
   const match = scoreJob(job({ title: "Senior Full-Stack Developer", seniority: "senior", description_text: "Build React and PHP integrations with MySQL, Node.js, TypeScript, SQL and APIs." }));
   assert.equal(match.score_breakdown.requirements_adjustment.cap, 84);
+  assert.match(match.score_breakdown.requirements_adjustment.evidence ?? "", /casi 3 años/);
   assert.ok(match.total_score <= 84);
 });
 
