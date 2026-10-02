@@ -318,7 +318,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.8-2026-09-29`. Changes to scoring
+The current rule identifier is `rules-v1.9-2026-10-02`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -373,8 +373,8 @@ Seniority is a scoring factor, not a hard filter. An explicit level in the title
 overrides a generic source label, including `Staff` roles marked `Senior` by
 Jobicy. An explicit requirement of at least five years of professional
 development also reduces this component and is recorded as a gap. It limits
-the final score to 69 so a two-year development profile is not labelled a
-very strong match solely through keyword overlap.
+the final score to 69 so a profile with almost three years of development is
+not labelled a very strong match solely through keyword overlap.
 For support, database, and infrastructure roles, an explicit requirement above
 the candidate's confirmed 3–6 years of support/infra experience also reduces
 seniority and caps the final score at 69. This resolves conflicts between a
@@ -452,6 +452,10 @@ skill even when the source puts it in `desirable`, recognizes explicit custom
 WordPress development and AWS operations, and reads a `5–10 years` range from
 its minimum. Get on Board may place core qualifications in its `desirable`
 field, so this field still needs manual QA for conflicting source data.
+The v1.9 profile correction records development employment at Cerezo Software
+from September 2023 through June 2026, approximately two years and nine months.
+Scoring explanations now say “casi 3 años”. The 4+ year central gap and Senior
+cap remain; the changed scoring version requires rescoring stored matches.
 
 ### Other requirements
 
