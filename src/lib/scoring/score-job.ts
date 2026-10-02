@@ -407,7 +407,7 @@ export function scoreJob(job: JobForScoring) {
   }
 
   if (developmentYears && developmentYears.years >= 4) {
-    gaps.push(`Se solicitan ${developmentYears.years} años de desarrollo profesional; el perfil acredita aproximadamente 2.`);
+    gaps.push(`Se solicitan ${developmentYears.years} años de desarrollo profesional; el perfil acredita ${CANDIDATE_PROFILE.developmentExperience.description}.`);
   }
 
   if (supportYears) {
@@ -588,7 +588,7 @@ export function scoreJob(job: JobForScoring) {
           : specialistSkills[0] ? specialistSkills[0].evidence
           : developmentYears && developmentYears.years >= 4 ? developmentYears.evidence
           : languageRaw <= 65 ? "Inglés profesional/fluido exigido; nivel conversacional declarado"
-          : supportYears?.evidence ?? (requirementsCap === 84 ? "Título Senior en desarrollo; aproximadamente dos años profesionales acreditados" : null),
+          : supportYears?.evidence ?? (requirementsCap === 84 ? `Título Senior en desarrollo; ${CANDIDATE_PROFILE.developmentExperience.description} de experiencia profesional acreditada` : null),
       },
       eligibility_adjustment: {
         status: location.eligibility,
