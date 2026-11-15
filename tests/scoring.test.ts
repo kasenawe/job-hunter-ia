@@ -80,7 +80,7 @@ test("marketing automation alone does not pass the technical prefilter", () => {
   assert.equal(isRelevantJobicyJob({ jobTitle: "Lifecycle Marketing Automation Specialist" }), false);
 });
 
-test("exceptional written and spoken English is a visible gap for conversational English", () => {
+test("exceptional written and spoken English requires verification", () => {
   const match = scoreJob(job({
     title: "Cloud Support Engineer",
     location_text: "Anywhere",
@@ -89,16 +89,16 @@ test("exceptional written and spoken English is a visible gap for conversational
   }));
 
   assert.equal(match.score_breakdown.raw.language, 55);
-  assert.ok(match.gaps.some((gap) => gap.includes("inglés más alto")));
+  assert.ok(match.gaps.some((gap) => gap.includes("inglés nativo")));
   assert.equal(match.score_breakdown.eligibility_adjustment.status, "eligible");
 });
 
 test("professional or strong written and spoken English is not treated as unspecified", () => {
   const professional = scoreJob(job({ description_text: "Build React frontends. Professional written and spoken English." }));
   const strong = scoreJob(job({ description_text: "Support Linux users. Strong written and verbal English communication skills." }));
-  assert.equal(professional.score_breakdown.raw.language, 65);
-  assert.equal(strong.score_breakdown.raw.language, 75);
-  assert.ok(professional.gaps.some((gap) => gap.includes("inglés más alto")));
+  assert.equal(professional.score_breakdown.raw.language, 90);
+  assert.equal(strong.score_breakdown.raw.language, 90);
+  assert.ok(!professional.gaps.some((gap) => gap.includes("inglés nativo")));
 });
 
 test("five years of PHP software engineering remains a gap with almost three years of development", () => {
@@ -121,17 +121,16 @@ test("explicit multi-year Go requirement is recorded as central and limits a bro
   assert.ok(match.gaps.some((gap) => gap.includes("4 años profesionales en Go")));
 });
 
-test("seven-year support and deep PostgreSQL internals override a Junior source label", () => {
+test("seven years of technical support is not a gap but PostgreSQL internals remain unverified", () => {
   const match = scoreJob(job({
     title: "Database Support Engineer",
     seniority: "junior",
     description_text: "You have 7+ years in technical support, databases, backend engineering, SRE, or a similar field. Postgres Expertise: You know PostgreSQL deeply—autovacuum behavior, WAL growth, long-running transactions, table bloat, and other internals. Troubleshoot Postgres queries and customer issues.",
   }));
-  assert.equal(match.score_breakdown.raw.seniority, 45);
+  assert.equal(match.score_breakdown.raw.seniority, 100);
   assert.equal(match.score_breakdown.requirements_adjustment.cap, 64);
-  assert.ok(match.requirement_analysis.some((item) => item.area === "support_tenure" && item.criticality === "central"));
+  assert.ok(!match.requirement_analysis.some((item) => item.area === "support_tenure"));
   assert.ok(match.requirement_analysis.some((item) => item.area === "database_internals" && item.status === "unverified"));
-  assert.ok(match.gaps.some((gap) => gap.includes("3–6 años")));
   assert.ok(match.total_score <= 64);
 });
 
@@ -236,13 +235,13 @@ test("Niuro-like production AWS and LLM tenure cannot be a very strong match", (
   assert.ok(match.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "LLM production" && item.status === "unverified"));
 });
 
-test("professional fluency in a Spanish or English listing is a central language gap", () => {
+test("professional fluency is compatible with the updated profile", () => {
   const fluent = scoreJob(job({ title: "Senior Full-Stack Product Engineer", language: "English", description_text: "React, TypeScript, APIs. Fluent professional English." }));
   const spanish = scoreJob(job({ language: "Spanish", description_text: "Desarrollar con React y SQL. Inglés profesional escrito y hablado. Professional working proficiency in English." }));
-  assert.equal(fluent.score_breakdown.raw.language, 65);
-  assert.equal(fluent.score_breakdown.requirements_adjustment.cap, 69);
-  assert.equal(spanish.score_breakdown.raw.language, 65);
-  assert.ok(spanish.requirement_analysis.some((item) => item.area === "language" && item.criticality === "central"));
+  assert.equal(fluent.score_breakdown.raw.language, 90);
+  assert.equal(fluent.score_breakdown.requirements_adjustment.cap, 84);
+  assert.equal(spanish.score_breakdown.raw.language, 90);
+  assert.ok(spanish.requirement_analysis.some((item) => item.area === "language" && item.criticality === "important"));
 });
 
 test("explicit four-year full-stack tenure and C#/.NET requirements constrain senior roles", () => {
@@ -278,5 +277,17 @@ test("custom WordPress work and AWS operations are central, while broad knowledg
   assert.ok(wordpress.requirement_analysis.some((item) => item.area === "specialist_skill" && item.skill === "WordPress"));
   assert.equal(aws.score_breakdown.requirements_adjustment.cap, 64);
   assert.ok(aws.gaps.some((gap) => gap.includes("5 años de desarrollo")));
-  assert.equal(aws.score_breakdown.raw.language, 65);
+  assert.equal(aws.score_breakdown.raw.language, 90);
+});
+
+ test("hybrid integration roles recommend a hybrid CV", () => {
+  const match = scoreJob(job());
+  assert.equal(match.recommended_cv, "Híbrido / integraciones / técnico-funcional");
+});
+
+test("technical support tenure above the overall L’Oréal period is flagged, but specialist database tenure is not assumed", () => {
+  const support = scoreJob(job({ title: "Technical Support Engineer", description_text: "12 years of technical support experience required. SQL APIs." }));
+  const database = scoreJob(job({ title: "Database Support Engineer", description_text: "7 years of database support experience required. SQL APIs." }));
+  assert.ok(support.requirement_analysis.some((item) => item.area === "support_tenure"));
+  assert.ok(!database.requirement_analysis.some((item) => item.area === "support_tenure"));
 });
