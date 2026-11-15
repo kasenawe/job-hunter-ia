@@ -318,7 +318,7 @@ Current profile axes:
 3. Technical / Functional
 4. Infrastructure / Support
 
-The current rule identifier is `rules-v1.9-2026-10-02`. Changes to scoring
+The current rule identifier is `rules-v2.0-2026-11-14`. Changes to scoring
 behavior require a new identifier before rescoring persisted matches.
 
 ### Scoring weights
@@ -375,10 +375,7 @@ Jobicy. An explicit requirement of at least five years of professional
 development also reduces this component and is recorded as a gap. It limits
 the final score to 69 so a profile with almost three years of development is
 not labelled a very strong match solely through keyword overlap.
-For support, database, and infrastructure roles, an explicit requirement above
-the candidate's confirmed 3–6 years of support/infra experience also reduces
-seniority and caps the final score at 69. This resolves conflicts between a
-source's `Junior` label and the actual tenure requested in the description.
+For explicit general technical support tenure above 11 years, the score flags a potential gap. L’Oréal experience spans diverse functions, not 11 years in every specialization; assess database, infrastructure and SRE tenure manually.
 An explicit `Staff Engineer` responsibility in the posting also overrides a
 `Senior` title/label when it describes the role itself.
 
@@ -391,7 +388,7 @@ The current implementation inspects job text for signals such as:
 - fluent / advanced English;
 - generic English requirements.
 
-The declared candidate level is conversational English, so stronger explicit requirements reduce the language score.
+The candidate reports advanced English. Professional and fluent requirements are not automatic gaps; native or exceptional requirements still need verification.
 
 ### Location score
 
@@ -442,9 +439,7 @@ skills are excluded from the central-requirement check. Existing rows require
 reimport before rescoring to gain this distinction.
 The v1.7 calibration covers explicit multi-year AWS operation and LLM
 integrations in production, additional specialist backend stacks, and
-four-year development requirements. Professional or fluent English is a
-central gap relative to the declared conversational level and caps a
-recommendation at 69 unless another central skill imposes 64. A Senior
+four-year development requirements. The former language cap was superseded by v2.0. A Senior
 development title without a stricter cap cannot be labeled a very strong match
 (cap 84).
 The v1.8 follow-up treats Ruby on Rails in a role title as a central unverified
@@ -659,3 +654,7 @@ Before adding a subsystem or feature, ask:
 If not, defer it.
 
 The project should remain a job-search tool, not become an indefinite software-engineering exercise.
+
+### Profile alignment v2.0 (14 November 2026)
+
+The profile includes confirmed Postman, SOAP, XML, WSDL, SOAPUI, ServiceNow, Active Directory and VMware experience; this does not establish specialist seniority. General technical support tenure and English rules are updated, and the CV recommendation includes a hybrid/integrations direction. Rescore active jobs and manually review the Top 10 before relying on it. Google Drive is a reference for human updates, not an automatic scoring integration.
