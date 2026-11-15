@@ -84,11 +84,11 @@ function scoreLanguage(text: string, language: string | null) {
   }
 
   if (/fluent (?:professional )?english|fluency in english|advanced english|professional english|professional written and spoken english|professional working proficiency in english/.test(text)) {
-    return 65;
+    return 90;
   }
 
   if (/english required|english proficiency|strong english|strong written and verbal english/.test(text)) {
-    return 75;
+    return 90;
   }
 
   return explicit.includes("spanish") ? 100 : 80;
@@ -165,7 +165,7 @@ function requiredDevelopmentYears(description: string, title: string) {
 
 function requiredSupportYears(description: string, title: string) {
   if (!/support|database|infrastructure|sre/i.test(title)) return null;
-  const requirements = description.matchAll(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?(?:experience\s+)?(?:in\s+)?(technical support|database(?:s| support)?|infrastructure|sre)\b[^.!?\n]{0,90}/gi);
+  const requirements = description.matchAll(/(?:at least|minimum(?: of)?|more than)?\s*(\d{1,2}|three|four|five|six|seven|eight|nine|ten)(?:\s+or more|\+)?\s+years?\s+(?:of\s+)?(?:experience\s+)?(?:in\s+)?(technical support)\b[^.!?\n]{0,90}/gi);
   const words: Record<string, number> = { three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
   for (const match of requirements) {
     const years = words[match[1].toLowerCase()] ?? Number(match[1]);
@@ -411,7 +411,7 @@ export function scoreJob(job: JobForScoring) {
   }
 
   if (supportYears) {
-    gaps.push(`Se solicitan ${supportYears.years} años en soporte/bases de datos o áreas afines; el perfil declara 3–6 años en soporte/infraestructura.`);
+    gaps.push(`Se solicitan ${supportYears.years} años de soporte técnico; el perfil acredita aproximadamente 11 años de trayectoria en L’Oréal, con funciones diversas.`);
   }
 
   if (advancedPostgres) {
@@ -437,7 +437,7 @@ export function scoreJob(job: JobForScoring) {
   }
 
   if (languageRaw <= 65) {
-    gaps.push("La vacante parece exigir un nivel de inglés más alto que el conversacional declarado.");
+    gaps.push("La vacante exige inglés nativo o excepcional; verificar el nivel específico requerido.");
   }
 
   if (location.eligibility === "incompatible") {
@@ -454,7 +454,9 @@ export function scoreJob(job: JobForScoring) {
         axisScores.technical_functional,
       )
       ? "Infraestructura / soporte"
-      : "Desarrollo";
+      : Math.max(axisScores.integrations, axisScores.technical_functional) > axisScores.development
+        ? "Híbrido / integraciones / técnico-funcional"
+        : "Desarrollo";
 
   const requirementAnalysis: Array<{
     area: string;
@@ -587,7 +589,7 @@ export function scoreJob(job: JobForScoring) {
           ? specialistRequirement.evidence
           : specialistSkills[0] ? specialistSkills[0].evidence
           : developmentYears && developmentYears.years >= 4 ? developmentYears.evidence
-          : languageRaw <= 65 ? "Inglés profesional/fluido exigido; nivel conversacional declarado"
+          : languageRaw <= 65 ? "Inglés nativo o excepcional exigido; verificar nivel específico"
           : supportYears?.evidence ?? (requirementsCap === 84 ? `Título Senior en desarrollo; ${CANDIDATE_PROFILE.developmentExperience.description} de experiencia profesional acreditada` : null),
       },
       eligibility_adjustment: {

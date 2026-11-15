@@ -19,7 +19,7 @@ The MVP currently supports:
 - opening a job detail with editable Spanish/English cover letter and company-interest drafts, generated from the listing and confirmed experience;
 - opening the original job offer.
 
-Scoring v1.8 is currently in QA and calibration. Confirmed location exclusions
+Scoring v2.0 requires rescoring and manual QA after the profile update. Confirmed location exclusions
 remain visible in a separate audit list and are capped below the
 application-priority threshold. The priority list does not fill empty slots
 with geographically incompatible jobs. New sources still need a manual Top 10

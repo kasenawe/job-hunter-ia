@@ -1,4 +1,4 @@
-export const SCORING_VERSION = "rules-v1.9-2026-10-02";
+export const SCORING_VERSION = "rules-v2.0-2026-11-14";
 
 export const SCORING_WEIGHTS = {
   technical: 35,
@@ -17,7 +17,7 @@ export const CANDIDATE_PROFILE = {
     description: "casi 3 años",
   },
   // Confirmed range; use the upper bound only to identify explicit requirements above it.
-  supportExperienceMaxYears: 6,
+  supportExperienceMaxYears: 11,
   postgresExperience: "SQL/RLS; advanced database internals unverified",
   // Confirmed by the candidate: no hands-on use of these tools or product security work.
   confirmedNoExperience: ["AWS", "Terraform", "Kubernetes", "product security"],
@@ -65,6 +65,14 @@ export const CANDIDATE_PROFILE = {
     "git",
     "github",
     "vercel",
+    "postman",
+    "soapui",
+    "soap",
+    "xml",
+    "wsdl",
+    "servicenow",
+    "active directory",
+    "vmware",
     "suitecrm",
     "crm",
   ],
